@@ -21,7 +21,7 @@ enum Tokens {
 	TOK_XOR,
 	TOK_COMMA,
 	TOK_LT,
-	TOK_GT
+	TOK_GT,
 };
 
 struct Token {
