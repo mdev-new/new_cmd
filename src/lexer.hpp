@@ -1,6 +1,13 @@
 #pragma once
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
+//#define WIN32_LEAN_AND_MEAN
+//#include <Windows.h>
+
+#include <cstdint>
+#include <unordered_map>
+
+std::unordered_map<char *, int> multicharMapping = {
+	"for": TOK_FOR,
+};
 
 enum Tokens {
 	TOK_UNDEFINED,
@@ -22,11 +29,31 @@ enum Tokens {
 	TOK_COMMA,
 	TOK_LT,
 	TOK_GT,
+
+///
+	TOK_FOR,
+	TOK_DO,
+	TOK_SET,
+	TOK_MKDIR,
+	TOK_DEL,
+	TOK_ECHO,
+	TOK_CD,
+	TOK_DIR
 };
+
+constexpr uint64_t consthash(const char *text) {
+  uint64_t h = 525201411107845655ull;
+  for (int i = 0;text[i];++i) {
+    h ^= text[i];
+    h *= 0x5bd1e9955bd1e995;
+    h ^= h >> 47;
+  }
+  return h;
+}
 
 struct Token {
 	short token;
-	LONG64 value;
+	uint64_t value;
 };
 
 struct LexedFile {
@@ -34,4 +61,4 @@ struct LexedFile {
 	int sizeOfTokens;
 };
 
-LexedFile lex(HANDLE hFile);
+LexedFile lex(char *buffer, int fileSize);

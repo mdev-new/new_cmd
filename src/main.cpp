@@ -7,20 +7,30 @@
 // multithreading
 // maybe get rid of lexer?
 
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
+//#define WIN32_LEAN_AND_MEAN
+//#include <Windows.h>
 #include <cstdio>
+#include <cstdlib>
 
 #include "lexer.hpp"
 #include "parser.hpp"
 
 int main(int argc, char *argv[]) {
-	LexedFile lexed = lex(CreateFileA(argv[1], GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL));
-	parse(lexed);
 
-	// for(int i = 0; i < lexed.sizeOfTokens; i++) {
-	// 	printf("%d %d\n", lexed.tokens[i].token, lexed.tokens[i].value);
-	// }
+	FILE *f = fopen(argv[1], "r");
+	fseek(f, 0, SEEK_END);
+	int size = ftell(f);
+	rewind(f);
+
+	char *buffer = malloc(size+1);
+	fread(buffer, size, 1, f);
+
+	LexedFile lexed = lex(buffer, size);
+	//parse(lexed);
+
+	for(int i = 0; i < lexed.sizeOfTokens; i++) {
+	 	printf("%d %d\n", lexed.tokens[i].token, lexed.tokens[i].value);
+	 }
 
 	return 0;
 }
