@@ -3,11 +3,7 @@
 //#include <Windows.h>
 
 #include <cstdint>
-#include <unordered_map>
-
-std::unordered_map<char *, int> multicharMapping = {
-	"for": TOK_FOR,
-};
+//#include <unordered_map>
 
 enum Tokens {
 	TOK_UNDEFINED,
@@ -38,18 +34,11 @@ enum Tokens {
 	TOK_DEL,
 	TOK_ECHO,
 	TOK_CD,
-	TOK_DIR
-};
+	TOK_DIR,
+	TOK_IF,
+	TOK_ELSE,
 
-constexpr uint64_t consthash(const char *text) {
-  uint64_t h = 525201411107845655ull;
-  for (int i = 0;text[i];++i) {
-    h ^= text[i];
-    h *= 0x5bd1e9955bd1e995;
-    h ^= h >> 47;
-  }
-  return h;
-}
+};
 
 struct Token {
 	short token;

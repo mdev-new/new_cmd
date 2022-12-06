@@ -25,15 +25,24 @@ uint64_t hash ( const char * text) {
   return h;
 }
 
+// todo use custom hash
+//std::unordered_map<char *, int> multicharMapping = {
+//	{"for", TOK_FOR},
+//	{"do", TOK_DO},
+//	{"set", TOK_SET},
+//	{"dir", TOK_DIR},
+//	{"if", TOK_IF},
+//};
+
 // process non single char tokens ("do", "for", etc)
 // basically inherit the context
 int processMultichar(char *end, char *start, int *toksCreated, Token *tokenbuffer, char *buffer) {
 	char *token = strndup(&buffer[start - buffer], end - start);
 	uint64_t hashed = hash(token);
-	printf("CALL %d %d :: %s ; %ull\n", end - buffer, *toksCreated, token, hashed);
-	int t = hashExtendedToken(token);
+	printf("CALL %d %d :: %s ; %llu \n", end - buffer, *toksCreated, token, hashed);
+	//int t = multicharMapping.at(token);
 	free(token);
-	return t;
+	return 0;
 }
 
 LexedFile lex(char *buffer, int fileSize) {
@@ -41,17 +50,24 @@ LexedFile lex(char *buffer, int fileSize) {
 	Token *tokenbuffer = malloc(allocatedSize);
 
 	// todo whacky
-	#define PUTTOKEN(token, value) currentToken = token; tokenbuffer[toksCreated++] = {token, value}; break
+	#define PUTTOKEN(token, value)   currentToken = token; tokenbuffer[toksCreated++] = {token, value}; break
+	#define PUTTOKENNB(token, value) currentToken = token; tokenbuffer[toksCreated++] = {token, value};
 
-	int numtok = 0, lasttoken = -1, i = 0, j = -1, currentToken = 0;
+	int numtok = 0, lasttoken = -1, i = 0, j = 0, currentToken = 0;
+	bool processingUndefined = false;
 
+	// todo for some reason we're lexing numerical ops as follows: TOK_PLUS TOK_NUMBER TOK_NUMBER
+	// or with multiple +'s something like this: TOK_PLUS TOK_NUMBER TOK_PLUS TOK_NUMBER TOK_NUMBER
+	// maybe fix? idk
+	//defo fix
 	while(i < fileSize) {
 		if(toksCreated >= 128) tokenbuffer = realloc(tokenbuffer, allocatedSize += 128*sizeof(Token));
 
+		//printf("%d\n", i);
 		switch(buffer[i]) {
 		case ' ': PUTTOKEN(TOK_SPACE, 0);
-		case '\t': PUTTOKEN(TOK_SPACE, 0);
-		case '\n': PUTTOKEN(TOK_SPACE, 0);
+		//case '\t': PUTTOKEN(TOK_SPACE, 0);
+		//case '\n': PUTTOKEN(TOK_SPACE, 0);
 
 		case '(': PUTTOKEN(TOK_OPENING_BRACKET, 0);
 		case ')': PUTTOKEN(TOK_CLOSING_BRACKET, 0);
@@ -70,17 +86,18 @@ LexedFile lex(char *buffer, int fileSize) {
 		case '>': PUTTOKEN(TOK_GT, 0);
 		case '<': PUTTOKEN(TOK_LT, 0);
 		case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9': numtok = numtok * 10 + (buffer[i] - '0'); currentToken = TOK_NUMBER; break;
-		default: if(j == -1) { j = i; printf("%d ", i); } currentToken = TOK_UNDEFINED; break;
+		default: if(!processingUndefined) { j = i; processingUndefined = true; } currentToken = TOK_UNDEFINED; break;
 		}
 
-		if(lasttoken == TOK_UNDEFINED && currentToken != TOK_UNDEFINED) { PUTTOKEN(processMultichar(&buffer[i], &buffer[j], &toksCreated, tokenbuffer, buffer), 0); j = -1; }
-		else if(lasttoken == TOK_NUMBER && currentToken != TOK_NUMBER) numtok = 0;
+		if(lasttoken == TOK_UNDEFINED && currentToken == TOK_SPACE && processingUndefined) { PUTTOKENNB(processMultichar(&buffer[i], &buffer[j], &toksCreated, tokenbuffer, buffer), 0); j = 0; processingUndefined = false;}
+		else if(lasttoken == TOK_NUMBER && currentToken != TOK_NUMBER) { PUTTOKENNB(TOK_NUMBER, numtok); numtok = 0; }
 		lasttoken = currentToken;
 
 		i++;
 	}
 
 	#undef PUTTOKEN
+	#undef PUTTOKENNB
 
 	return {tokenbuffer, toksCreated};
 }
