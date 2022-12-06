@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
 	//parse(lexed);
 
 	for(int i = 0; i < lexed.sizeOfTokens; i++) {
-	 	printf("%d %d\n", lexed.tokens[i].token, lexed.tokens[i].value);
+	 	printf("%d %d %llu\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].additionalData);
 	 }
 
 	return 0;

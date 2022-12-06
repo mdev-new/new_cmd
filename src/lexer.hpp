@@ -43,6 +43,7 @@ enum Tokens {
 struct Token {
 	short token;
 	uint64_t value;
+	uint64_t additionalData;
 };
 
 struct LexedFile {
