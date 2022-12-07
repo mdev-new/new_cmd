@@ -28,7 +28,8 @@ int main(int argc, char *argv[]) {
 	//parse(lexed);
 
 	for(int i = 0; i < lexed.sizeOfTokens; i++) {
-	 	printf("%d %d %d\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].additionalData);
+		if(lexed.tokens[i].token == TOK_UNDEFINED && lexed.tokens[i].value != 0) printf("%d *0x%x(\"%s\") %d\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].value, lexed.tokens[i].additionalData);
+		else printf("%d %d %d\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].additionalData);
 	}
 
 	return 0;

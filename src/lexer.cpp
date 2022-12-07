@@ -53,6 +53,7 @@ struct processedMultichar {
 	int size;
 };
 
+// todo probably move to parser
 processedMultichar processMultichar(int start, int end, char *buffer) {
 	char *token = strndup(buffer+start, end - start);
 	uint64_t hashed = hash(token);
@@ -71,7 +72,8 @@ LexedFile lex(char *buffer, int fileSize) {
 
 	#define PUTTOKEN(token, value)   temptoken = {token, value, 0}; tempUsed = true; currentToken = token; break
 	#define PUTTOKENNB(token, value) tokenbuffer[toksCreated++] = (Token){token, value, 0}
-	#define logstatus printf("%d %d %d %d %d %d %d %d\n", allocatedSize, toksCreated, numtok, lasttoken, currentToken, tempUsed, i, j);
+	//#define logstatus printf("STAT;; %d %d %d %d %d %d %d %d\n", allocatedSize, toksCreated, numtok, lasttoken, currentToken, tempUsed, i, j);
+	#define logstatus
 
 	int numtok = 0, lasttoken = -1, i = 0, j = -1, currentToken = 0;
 	Token temptoken = {0, 0, 0};
@@ -81,9 +83,9 @@ LexedFile lex(char *buffer, int fileSize) {
 		if(toksCreated >= 128) tokenbuffer = realloc(tokenbuffer, allocatedSize += 128*sizeof(Token));
 
 		switch(buffer[i]) {
-		case ' ': PUTTOKEN(TOK_SPACE, 0);
-		case '\t': PUTTOKEN(TOK_SPACE, 0);
-		case '\n': PUTTOKEN(TOK_SPACE, 0);
+		case ' ':
+		case '\t':
+		case '\n': currentToken = TOK_SPACE; break;
 
 		case '(': PUTTOKEN(TOK_OPENING_BRACKET, 0);
 		case ')': PUTTOKEN(TOK_CLOSING_BRACKET, 0);
@@ -101,6 +103,8 @@ LexedFile lex(char *buffer, int fileSize) {
 		case ',': PUTTOKEN(TOK_COMMA, 0);
 		case '>': PUTTOKEN(TOK_GT, 0);
 		case '<': PUTTOKEN(TOK_LT, 0);
+		case ':': PUTTOKEN(TOK_COLON, 0);
+		case '"': PUTTOKEN(TOK_QUOTE, 0);
 		case '0':
 		case '1':
 		case '2':
@@ -110,7 +114,7 @@ LexedFile lex(char *buffer, int fileSize) {
 		case '6':
 		case '7':
 		case '8':
-		case '9': numtok = numtok * 10 + (buffer[i] - '0'); currentToken = TOK_NUMBER; break;
+		case '9': if(j != -1) {currentToken = TOK_UNDEFINED; } else { numtok = numtok * 10 + (buffer[i] - '0'); currentToken = TOK_NUMBER; } break;
 		default: if(j == -1) { j = i; } currentToken = TOK_UNDEFINED; break;
 		}
 
@@ -135,6 +139,7 @@ LexedFile lex(char *buffer, int fileSize) {
 
 	#undef PUTTOKEN
 	#undef PUTTOKENNB
+	#undef logstatus
 
 	return {tokenbuffer, toksCreated};
 }

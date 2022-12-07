@@ -25,6 +25,8 @@ enum Tokens {
 	TOK_COMMA,
 	TOK_LT,
 	TOK_GT,
+	TOK_COLON,
+	TOK_QUOTE,
 
 ///
 	TOK_FOR,
