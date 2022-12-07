@@ -77,10 +77,6 @@ LexedFile lex(char *buffer, int fileSize) {
 	Token temptoken = {0, 0, 0};
 	bool tempUsed = false;
 
-	// todo for some reason we're lexing numerical ops as follows: TOK_PLUS TOK_NUMBER TOK_NUMBER
-	// or with multiple +'s something like this: TOK_PLUS TOK_NUMBER TOK_PLUS TOK_NUMBER TOK_NUMBER
-	// maybe fix? idk
-	//defo fix
 	while(i < fileSize) {
 		if(toksCreated >= 128) tokenbuffer = realloc(tokenbuffer, allocatedSize += 128*sizeof(Token));
 
