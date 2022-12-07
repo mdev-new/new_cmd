@@ -16,7 +16,6 @@
 #include "parser.hpp"
 
 int main(int argc, char *argv[]) {
-
 	FILE *f = fopen(argv[1], "r");
 	fseek(f, 0, SEEK_END);
 	int size = ftell(f);
@@ -29,8 +28,8 @@ int main(int argc, char *argv[]) {
 	//parse(lexed);
 
 	for(int i = 0; i < lexed.sizeOfTokens; i++) {
-	 	printf("%d %d %llu\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].additionalData);
-	 }
+	 	printf("%d %d(%s) %d\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].value, lexed.tokens[i].additionalData);
+	}
 
 	return 0;
 }

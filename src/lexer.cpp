@@ -66,13 +66,16 @@ processedMultichar processMultichar(int start, int end, char *buffer) {
 }
 
 LexedFile lex(char *buffer, int fileSize) {
-	int allocatedSize = 128*sizeof(Token), toksCreated= 0, bytesRead = 0;
+	int allocatedSize = 128*sizeof(Token), toksCreated= 0;
 	Token *tokenbuffer = malloc(allocatedSize);
 
-	#define PUTTOKEN(token, value)   currentToken = token; tokenbuffer[toksCreated++] = {token, value, 0}; break
+	#define PUTTOKEN(token, value)   temptoken = {token, value, 0}; tempUsed = true; currentToken = token; break
 	#define PUTTOKENNB(token, value) tokenbuffer[toksCreated++] = (Token){token, value, 0}
+	#define logstatus printf("%d %d %d %d %d %d %d %d\n", allocatedSize, toksCreated, numtok, lasttoken, currentToken, tempUsed, i, j);
 
 	int numtok = 0, lasttoken = -1, i = 0, j = -1, currentToken = 0;
+	Token temptoken = {0, 0, 0};
+	bool tempUsed = false;
 
 	// todo for some reason we're lexing numerical ops as follows: TOK_PLUS TOK_NUMBER TOK_NUMBER
 	// or with multiple +'s something like this: TOK_PLUS TOK_NUMBER TOK_PLUS TOK_NUMBER TOK_NUMBER
@@ -116,14 +119,20 @@ LexedFile lex(char *buffer, int fileSize) {
 		}
 
 		if(lasttoken == TOK_UNDEFINED && currentToken != TOK_UNDEFINED) {
-			//PUTTOKENNB(processMultichar(j, i, buffer), 0);
 			auto processed = processMultichar(j, i, buffer);
+			logstatus;
 			if(processed.token != TOK_UNDEFINED) { PUTTOKENNB(processed.token, 0); }
-			else { PUTTOKENNB(TOK_UNDEFINED, processed.ptr); tokenbuffer[toksCreated].additionalData = processed.size; }
+			else { PUTTOKENNB(TOK_UNDEFINED, processed.ptr); tokenbuffer[toksCreated-1].additionalData = processed.size; }
 			j = -1;
 		}
 		else if(lasttoken == TOK_NUMBER && currentToken != TOK_NUMBER) { PUTTOKENNB(TOK_NUMBER, numtok); numtok = 0; }
 		lasttoken = currentToken;
+
+		if(tempUsed) {
+			tokenbuffer[toksCreated++] = {temptoken.token, temptoken.value, temptoken.additionalData};
+			logstatus;
+			tempUsed = false;
+		}
 
 		i++;
 	}
