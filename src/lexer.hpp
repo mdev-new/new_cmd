@@ -28,6 +28,8 @@ enum Tokens {
 	TOK_COLON,
 	TOK_QUOTE,
 
+	TOK_ENVVAR,
+
 ///
 	TOK_FOR,
 	TOK_DO,

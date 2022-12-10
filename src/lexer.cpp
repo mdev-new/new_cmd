@@ -26,7 +26,7 @@ uint64_t hash ( const char * text) {
   return h;
 }
 
-// todo upgrade gcc & consteval
+// todo upgrade gcc & use consteval
 constexpr uint64_t consthash(const char *text) {
   uint64_t h = 525201411107845655ull;
   for (int i = 0;text[i];++i) {
@@ -72,18 +72,18 @@ LexedFile lex(char *buffer, int fileSize) {
 
 	#define PUTTOKEN(token, value)   temptoken = {token, value, 0}; tempUsed = true; currentToken = token; break
 	#define PUTTOKENNB(token, value) tokenbuffer[toksCreated++] = (Token){token, value, 0}
-	//#define logstatus printf("STAT;; %d %d %d %d %d %d %d %d\n", allocatedSize, toksCreated, numtok, lasttoken, currentToken, tempUsed, i, j);
+	//#define logstatus printf("STAT;; %d %d %d %d %d %d %d %d %d\n", allocatedSize, toksCreated, numtok, lasttoken, currentToken, tempUsed, i, j, inString);
 	#define logstatus
 
 	int numtok = 0, lasttoken = -1, i = 0, j = -1, currentToken = 0;
 	Token temptoken = {0, 0, 0};
-	bool tempUsed = false;
+	bool tempUsed = false, inString = false;
 
 	while(i < fileSize) {
-		if(toksCreated >= 128) tokenbuffer = realloc(tokenbuffer, allocatedSize += 128*sizeof(Token));
+		if(toksCreated > 127) tokenbuffer = realloc(tokenbuffer, allocatedSize += 128*sizeof(Token));
 
 		switch(buffer[i]) {
-		case ' ':
+		case ' ' :
 		case '\t':
 		case '\n': currentToken = TOK_SPACE; break;
 
@@ -96,15 +96,15 @@ LexedFile lex(char *buffer, int fileSize) {
 		case '=': PUTTOKEN(TOK_EQUALS, 0);
 		case '|': PUTTOKEN(TOK_PIPE, 0);
 		case '&': PUTTOKEN(TOK_AND, 0);
-		case '%': PUTTOKEN(TOK_PERCENT, 0);
-		case '!': PUTTOKEN(TOK_LOGICALNOT, 0);
 		case '~': PUTTOKEN(TOK_TILDE, 0);
 		case '^': PUTTOKEN(TOK_XOR, 0);
 		case ',': PUTTOKEN(TOK_COMMA, 0);
 		case '>': PUTTOKEN(TOK_GT, 0);
 		case '<': PUTTOKEN(TOK_LT, 0);
 		case ':': PUTTOKEN(TOK_COLON, 0);
-		case '"': PUTTOKEN(TOK_QUOTE, 0);
+		case '"': inString = !inString; PUTTOKEN(TOK_QUOTE, 0);
+		case '%': inString = !inString; PUTTOKEN(TOK_PERCENT, 0);
+		case '!': inString = !inString; PUTTOKEN(TOK_LOGICALNOT, 0);
 		case '0':
 		case '1':
 		case '2':
@@ -118,6 +118,8 @@ LexedFile lex(char *buffer, int fileSize) {
 		default: if(j == -1) { j = i; } currentToken = TOK_UNDEFINED; break;
 		}
 
+		if(inString) { if(j == -1) j = i+1; currentToken = TOK_UNDEFINED; }
+
 		if(lasttoken == TOK_UNDEFINED && currentToken != TOK_UNDEFINED) {
 			auto processed = processMultichar(j, i, buffer);
 			logstatus;
@@ -125,7 +127,7 @@ LexedFile lex(char *buffer, int fileSize) {
 			else { PUTTOKENNB(TOK_UNDEFINED, processed.ptr); tokenbuffer[toksCreated-1].additionalData = processed.size; }
 			j = -1;
 		}
-		else if(lasttoken == TOK_NUMBER && currentToken != TOK_NUMBER) { PUTTOKENNB(TOK_NUMBER, numtok); numtok = 0; }
+		else if(lasttoken == TOK_NUMBER && currentToken != TOK_NUMBER && !inString) { logstatus; PUTTOKENNB(TOK_NUMBER, numtok); numtok = 0; }
 		lasttoken = currentToken;
 
 		if(tempUsed) {
