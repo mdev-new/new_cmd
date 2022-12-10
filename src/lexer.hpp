@@ -29,19 +29,13 @@ enum Tokens {
 	TOK_QUOTE,
 
 	TOK_ENVVAR,
+	TOK_BUILTIN, // builtins that do not need to be tokens
 
-///
 	TOK_FOR,
 	TOK_DO,
 	TOK_SET,
-	TOK_MKDIR,
-	TOK_DEL,
-	TOK_ECHO,
-	TOK_CD,
-	TOK_DIR,
 	TOK_IF,
 	TOK_ELSE,
-
 };
 
 struct Token {
@@ -51,8 +45,9 @@ struct Token {
 };
 
 struct LexedFile {
+	// i could use std::vector here but whatever
 	Token *tokens;
-	int sizeOfTokens;
+	int noOfTokens;
 };
 
 LexedFile lex(char *buffer, int fileSize);

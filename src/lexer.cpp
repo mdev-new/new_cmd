@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <unordered_map>
 #include <utility>
+#include "interpreter.hh"
 
 char *strndup(const char *str, size_t chars) {
     int n;
@@ -16,37 +17,6 @@ char *strndup(const char *str, size_t chars) {
     return buffer;
 }
 
-uint64_t hash ( const char * text) {
-  uint64_t h = 525201411107845655ull;
-  for (;*text;++text) {
-    h ^= *text;
-    h *= 0x5bd1e9955bd1e995;
-    h ^= h >> 47;
-  }
-  return h;
-}
-
-// todo upgrade gcc & use consteval
-constexpr uint64_t consthash(const char *text) {
-  uint64_t h = 525201411107845655ull;
-  for (int i = 0;text[i];++i) {
-    h ^= text[i];
-    h *= 0x5bd1e9955bd1e995;
-    h ^= h >> 47;
-  }
-  return h;
-}
-
-// todo use custom hash
-//todo find a better way not dependant on stl
-std::unordered_map<uint64_t, char> multicharMapping = {
-	{consthash("for"), TOK_FOR},
-	{consthash("do"), TOK_DO},
-	{consthash("set"), TOK_SET},
-	{consthash("dir"), TOK_DIR},
-	{consthash("if"), TOK_IF},
-};
-
 struct processedMultichar {
 	int token;
 	char *ptr;
@@ -59,7 +29,7 @@ processedMultichar processMultichar(int start, int end, char *buffer) {
 	uint64_t hashed = hash(token);
 	printf("CALL %d :: %s ; %llu \n", end - start, token, hashed);
 	try {
-		int ret = multicharMapping.at(hashed);
+		int ret = multicharMapping.at(hashed).first;
 		free(token);
 		return {.token = ret, .ptr = nullptr, .size = 0};
 	}

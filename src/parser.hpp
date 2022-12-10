@@ -2,43 +2,39 @@
 #include "lexer.hpp"
 #include <cstring>
 
-struct Number {
-	union {
-		float f;
-		int i;
-	};
-};
-
-struct Value {
-	union {
-		Number num;
-		char *str;
-	};
-
-	Value() {};
-	Value(int i) { num.i = i; }
-	Value(float f) { num.f = f; }
-	Value(char *string) { str = string; }
-};
-
+// I hate that this has to be here but whatever
 enum NodeType {
-	NODE_NOVAL,
+	NODE_PROGRAM,
 	NODE_NUMBER,
-	NODE_STRING,
-	NODE_LABEL,
-	NODE_ENVVAR,
-	NODE_BUILTIN,
-	NODE_PLUS_NOVAL,
-	NODE_MINUS_NOVAL,
+	NODE_PLUS,
+	NODE_MINUS,
+	NODE_CALL,
 };
 
 struct Node {
-	Node *children;
-	int noOfChildren;
-
-	Value value;
-	NodeType valueType;
+	NodeType type;
 };
+
+struct ProgramNode final : public Node {
+
+};
+
+struct BinOpNode : public Node {
+	Node* left;
+	Node* right;
+};
+
+// so far only ints
+struct NumberNode final : public Node {
+	int value;
+	NumberNode(int num) {
+		Node::type = NODE_NUMBER;
+		value = num;
+	}
+};
+
+struct PlusNode final : public BinOpNode {};
+struct MinusNode final : public BinOpNode {};
 
 struct ParsedFile {
 	Node rootNode;

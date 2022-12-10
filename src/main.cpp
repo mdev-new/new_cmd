@@ -27,14 +27,14 @@ int main(int argc, char *argv[]) {
 	LexedFile lexed = lex(buffer, size);
 	ParsedFile parsed = parse(lexed);
 
-	for(int i = 0; i < lexed.sizeOfTokens; i++) {
+	for(int i = 0; i < lexed.noOfTokens; i++) {
 		if(lexed.tokens[i].token == TOK_UNDEFINED && lexed.tokens[i].value != 0) printf("%d *0x%x(\"%s\") %d\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].value, lexed.tokens[i].additionalData);
 		else printf("%d %d %d\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].additionalData);
 	}
 
 	printf("---\n");
 
-	for(int i = 0; i < parsed.rootNode.noOfChildren; i++) printf("%d\n", parsed.rootNode.children[i].children[1].value);
+	//for(int i = 0; i < parsed.rootNode.noOfChildren; i++) printf("%d\n", parsed.rootNode.children[i].children[1].value);
 
 	return 0;
 }
