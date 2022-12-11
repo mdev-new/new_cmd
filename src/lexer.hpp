@@ -5,7 +5,7 @@
 #include <cstdint>
 //#include <unordered_map>
 
-enum Tokens {
+enum TokenType {
 	TOK_UNDEFINED,
 	TOK_SPACE,
 	TOK_NUMBER,
@@ -28,12 +28,13 @@ enum Tokens {
 	TOK_COLON,
 	TOK_QUOTE,
 
+	TOK_SWITCH,
+
 	TOK_ENVVAR,
 	TOK_BUILTIN, // builtins that do not need to be tokens
 
 	TOK_FOR,
 	TOK_DO,
-	TOK_SET,
 	TOK_IF,
 	TOK_ELSE,
 };

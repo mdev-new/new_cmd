@@ -1,0 +1,47 @@
+src/lexer.cpp:30:56: warning: format specifies type 'unsigned long long' but the argument has type 'uint64_t' (aka 'unsigned long') [-Wformat]
+        printf("CALL %d :: %s ; %llu \n", end - start, token, hashed);
+                                ~~~~                          ^~~~~~
+                                %lu
+src/lexer.cpp:41:9: error: cannot initialize a variable of type 'Token *' with an rvalue of type 'void *'
+        Token *tokenbuffer = malloc(allocatedSize);
+               ^             ~~~~~~~~~~~~~~~~~~~~~
+src/lexer.cpp:97:37: error: cannot initialize a member subobject of type 'uint64_t' (aka 'unsigned long') with an lvalue of type 'char *'
+                        else { PUTTOKENNB(TOK_UNDEFINED, processed.ptr); tokenbuffer[toksCreated-1].additionalData = processed.size; }
+                                                         ^~~~~~~~~~~~~
+src/lexer.cpp:44:79: note: expanded from macro 'PUTTOKENNB'
+        #define PUTTOKENNB(token, value) tokenbuffer[toksCreated++] = (Token){token, value, 0}
+                                                                                     ^~~~~
+1 warning and 2 errors generated.
+In file included from src/main.cpp:16:
+src/parser.hpp:6:2: error: unknown type name 'Node'
+        Node rootNode;
+        ^
+src/main.cpp:24:8: error: cannot initialize a variable of type 'char *' with an rvalue of type 'void *'
+        char *buffer = malloc(size+1);
+              ^        ~~~~~~~~~~~~~~
+src/main.cpp:31:131: warning: format specifies type 'unsigned int' but the argument has type 'uint64_t' (aka 'unsigned long') [-Wformat]
+                if(lexed.tokens[i].token == TOK_UNDEFINED && lexed.tokens[i].value != 0) printf("%d *0x%x(\"%s\") %d\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].value, lexed.tokens[i].additionalData);
+                                                                                                       ~~                                       ^~~~~~~~~~~~~~~~~~~~~
+                                                                                                       %lx
+src/main.cpp:31:154: warning: format specifies type 'char *' but the argument has type 'uint64_t' (aka 'unsigned long') [-Wformat]
+                if(lexed.tokens[i].token == TOK_UNDEFINED && lexed.tokens[i].value != 0) printf("%d *0x%x(\"%s\") %d\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].value, lexed.tokens[i].additionalData);
+                                                                                                            ~~                                                         ^~~~~~~~~~~~~~~~~~~~~
+                                                                                                            %lu
+src/main.cpp:31:177: warning: format specifies type 'int' but the argument has type 'uint64_t' (aka 'unsigned long') [-Wformat]
+                if(lexed.tokens[i].token == TOK_UNDEFINED && lexed.tokens[i].value != 0) printf("%d *0x%x(\"%s\") %d\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].value, lexed.tokens[i].additionalData);
+                                                                                                                  ~~                                                                          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                                                                                                                  %lu
+src/main.cpp:32:52: warning: format specifies type 'int' but the argument has type 'uint64_t' (aka 'unsigned long') [-Wformat]
+                else printf("%d %d %d\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].additionalData);
+                                ~~                               ^~~~~~~~~~~~~~~~~~~~~
+                                %lu
+src/main.cpp:32:75: warning: format specifies type 'int' but the argument has type 'uint64_t' (aka 'unsigned long') [-Wformat]
+                else printf("%d %d %d\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].additionalData);
+                                   ~~                                                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                                   %lu
+5 warnings and 2 errors generated.
+In file included from src/parser.cpp:1:
+src/parser.hpp:6:2: error: unknown type name 'Node'
+        Node rootNode;
+        ^
+1 error generated.

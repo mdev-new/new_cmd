@@ -1,8 +1,11 @@
 #pragma once
 #include <unordered_map>
+#include <utility>
 #include "lexer.hpp"
+#include "parser.hpp"
 
-// todo upgrade gcc & use consteval
+// maybe todo upgrade gcc & use consteval
+// leave this here since lexer.cpp depends on it
 constexpr uint64_t hash(const char *text) {
   uint64_t h = 525201411107845655ull;
   for (int i = 0;text[i];++i) {
@@ -13,13 +16,14 @@ constexpr uint64_t hash(const char *text) {
   return h;
 }
 
-struct CallParams {};
+struct CallParams {
+	Node *params;
+};
 using CallPtr = int(*)(CallParams &callParams);
 
-std::unordered_map<uint64_t, std::pair<int, CallPtr>> multicharMapping = {
-	{hash("for"), std::make_pair(TOK_FOR, nullptr)},
-	{hash("do"), std::make_pair(TOK_DO, nullptr)},
-	{hash("set"), std::make_pair(TOK_SET, nullptr)},
-	{hash("if"), std::make_pair(TOK_IF, nullptr)},
-	{hash("else"), std::make_pair(TOK_ELSE, nullptr)},
-};
+#define INTERNALFUN(name) int name(CallParams &callParams)
+
+INTERNALFUN(doFor);
+INTERNALFUN(doSet);
+
+extern std::unordered_map<uint64_t, std::pair<int, CallPtr>> multicharMapping;
