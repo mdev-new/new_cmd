@@ -1,82 +1,51 @@
 #pragma once
 #include "lexer.hpp"
 #include <cstring>
+#include <vector>
+#include <memory>
+
+// original thought was to compile the whole program
+// into series of nodes that would get evaluated at runtime
 
 // I hate that this has to be here but whatever
 enum NodeType {
-	NODE_PROGRAM,
-	NODE_NUMBER,
-	NODE_PLUS,
-	NODE_MINUS,
-	NODE_CALL,
+	NODE_LEAF,
+	NODE_INNER
+};
+
+enum InnerNodeType {
+	INODE_PARENTHESES,
+	INODE_ADD,
+	INODE_SUB,
+	INODE_MUL,
+	INODE_DIV
+};
+
+enum LeafNodeType {
 };
 
 struct Node {
-	NodeType type;
-	virtual char* stringify() {}
+	uint16_t type; // .......yyyyyyyyx => x = leaf/inner, y = leaf/inner type
 };
 
-// todo move implementations to separate file
-
-struct ProgramNode final : public Node {
-	Node **body;
-	int nodeCount;
-
-	ProgramNode(Node **b, int c) {
-		body = b;
-		nodeCount = c;
-		type = NODE_PROGRAM;
-	}
+struct LeafNode : public Node {
 };
 
-struct BinOpNode : public Node {
-	Node* left;
-	Node* right;
+struct InnerNode : public Node {
+	std::vector<std::unique_ptr<Node>> children;
 };
 
-// so far only ints
-struct NumberNode final : public Node {
-	int value;
-	NumberNode(int num) {
-		this->type = NODE_NUMBER;
-		value = num;
-	}
-};
+struct BinOpNode : public InnerNode {};
 
-// todo (plus + minus) maybe return NumberNode?
-struct PlusNode final : public BinOpNode {
-	PlusNode(Node *left, Node *right) {
-		this->left = left;
-		this->right = right;
-		this->type = NODE_PLUS;
-	}
-
-	int evaluate() {
-		if(left->type == right->type == NODE_NUMBER) return (*(NumberNode*)left).value + (*(NumberNode*)right).value;
-		else return 0;
-	}
-};
-struct MinusNode final : public BinOpNode {
-	MinusNode(Node *left, Node *right) {
-		this->left = left;
-		this->right = right;
-		this->type = NODE_MINUS;
-	}
-
-	int evaluate() {
-		if(left->type == right->type == NODE_NUMBER) return (*(NumberNode*)left).value - (*(NumberNode*)right).value;
-		else return 0;
-	}
-};
-
-struct ExeCallNode final : public Node {};
-
-// todo figure out how to implement internal commands with special handling (for, do, if, else, set, etc)
-
-struct SetNode final : public Node {};
+struct AdditionNode : public BinOpNode {};
+struct SubtractionNode : public BinOpNode {};
+struct MultiplicationNode : public BinOpNode {};
+struct DivisionNode : public BinOpNode {};
+struct EnvVarNode {};
 
 struct ParsedFile {
-	ProgramNode *rootNode;
+	Node** nodes;
+	int ncount;
 };
 
 ParsedFile parse(LexedFile &lexedFile);

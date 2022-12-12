@@ -8,5 +8,4 @@ std::unordered_map<uint64_t, std::pair<int, CallPtr>> multicharMapping = {
 	{hash("else"), std::make_pair(TOK_ELSE, nullptr)},
 };
 
-INTERNALFUN(doFor) {}
 INTERNALFUN(doSet) {}

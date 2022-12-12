@@ -23,7 +23,6 @@ using CallPtr = int(*)(CallParams &callParams);
 
 #define INTERNALFUN(name) int name(CallParams &callParams)
 
-INTERNALFUN(doFor);
 INTERNALFUN(doSet);
 
 extern std::unordered_map<uint64_t, std::pair<int, CallPtr>> multicharMapping;

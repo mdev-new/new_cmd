@@ -1,0 +1,15 @@
+cflags=-m64 -Os -flto -msse -msse2 -msse4.2 -mavx -mavx2 -mmmx -funsafe-math-optimizations -ftree-vectorize -ffast-math -ftree-slp-vectorize -fassociative-math -fvisibility=hidden -fcompare-debug-second -fno-stack-protector -fno-math-errno -fno-ident -fno-asynchronous-unwind-tables -Wl,-s,--gc-sections,--reduce-memory-overheads,--build-id=none -DNDEBUG
+shutup=-fpermissive -Wno-narrowing -Wno-unused-result -Wno-format
+
+rule cpp
+  command = g++ -MD -MF $out.depends -o $out -c $in $cflags $shutup
+  depfile = $out.depends
+
+rule link
+  command = g++ -o $out $cflags $in
+
+build bin/main.o: cpp src/main.cpp
+build bin/lexer.o: cpp src/lexer.cpp
+build bin/parser.o: cpp src/parser.cpp
+build bin/interpreter.o: cpp src/interpreter.cc
+build a.out: link bin/lexer.o bin/parser.o bin/interpreter.o bin/main.o

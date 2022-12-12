@@ -8,6 +8,11 @@
 /// !! IF AND WHEN IT MOSTLY WORKS !!
 /// !! DO. NOT. TOUCH. !!
 
+// current bugs with this:
+// 1. modulo & logical not operatos fuck everything up (what a great choice to use operator also as a variable access, right?)
+
+// its quite mad that this isnt implemented with a class, despite being in c++
+
 char *strndup(const char *str, size_t chars) {
     int n;
 
@@ -30,7 +35,7 @@ struct processedMultichar {
 processedMultichar processMultichar(int start, int end, char *buffer) {
 	char *token = strndup(buffer+start, end - start);
 	uint64_t hashed = hash(token);
-	printf("CALL %d :: %s ; %llu \n", end - start, token, hashed);
+	//printf("CALL %d :: %s ; %llu \n", end - start, token, hashed);
 	try {
 		int ret = multicharMapping.at(hashed).first;
 		if(ret == TOK_BUILTIN) return {.token = TOK_BUILTIN, .ptr = token, .size = end - start};
@@ -62,21 +67,21 @@ LexedFile lex(char *buffer, int fileSize) {
 		case '\t':
 		case '\n': currentToken = TOK_SPACE; break;
 
-		case '(': PUTTOKEN(TOK_OPENING_BRACKET, 0);
-		case ')': PUTTOKEN(TOK_CLOSING_BRACKET, 0);
-		case '+': PUTTOKEN(TOK_PLUS, 0);
-		case '-': PUTTOKEN(TOK_MINUS, 0);
-		case '*': PUTTOKEN(TOK_MULTIPLY, 0);
-		case '/': PUTTOKEN(TOK_DIVIDE, 0);
-		case '=': PUTTOKEN(TOK_EQUALS, 0);
-		case '|': PUTTOKEN(TOK_PIPE, 0);
-		case '&': PUTTOKEN(TOK_AND, 0);
-		case '~': PUTTOKEN(TOK_TILDE, 0);
-		case '^': PUTTOKEN(TOK_XOR, 0);
-		case ',': PUTTOKEN(TOK_COMMA, 0);
-		case '>': PUTTOKEN(TOK_GT, 0);
-		case '<': PUTTOKEN(TOK_LT, 0);
-		case ':': PUTTOKEN(TOK_COLON, 0);
+		case '(':
+		case ')':
+		case '+':
+		case '-':
+		case '*':
+		case '/':
+		case '=':
+		case '|':
+		case '&':
+		case '~':
+		case '^':
+		case ',':
+		case '>':
+		case '<':
+		case ':': PUTTOKEN(buffer[i], 0);
 		case '"': inString = !inString; PUTTOKEN(TOK_QUOTE, 0);
 		case '%': inString = !inString; PUTTOKEN(TOK_PERCENT, 0);
 		case '!': inString = !inString; PUTTOKEN(TOK_LOGICALNOT, 0);
@@ -107,7 +112,7 @@ LexedFile lex(char *buffer, int fileSize) {
 		lasttoken = currentToken;
 
 		if(tempUsed) {
-			tokenbuffer[toksCreated++] = {temptoken.token, temptoken.value, temptoken.additionalData};
+			tokenbuffer[toksCreated++] = temptoken;
 			logstatus;
 			tempUsed = false;
 		}
