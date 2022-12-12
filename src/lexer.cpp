@@ -7,6 +7,8 @@
 
 /// !! IF AND WHEN IT MOSTLY WORKS !!
 /// !! DO. NOT. TOUCH. !!
+/// !! THIS. CODE. IS. A. HELL. OF. A. MESS. !!
+/// i wish and hope ANYONE doesn't have to read (and understand) this after me.
 
 // current bugs with this:
 // 1. modulo & logical not operatos fuck everything up (what a great choice to use operator also as a variable access, right?)
@@ -38,7 +40,8 @@ processedMultichar processMultichar(int start, int end, char *buffer) {
 	//printf("CALL %d :: %s ; %llu \n", end - start, token, hashed);
 	try {
 		int ret = multicharMapping.at(hashed).first;
-		if(ret == TOK_BUILTIN) return {.token = TOK_BUILTIN, .ptr = token, .size = end - start};
+		if(ret == TOK_BUILTIN)
+			return {.token = TOK_BUILTIN, .ptr = token, .size = end - start};
 		free(token);
 		return {.token = ret, .ptr = nullptr, .size = 0};
 	}
@@ -55,17 +58,21 @@ LexedFile lex(char *buffer, int fileSize) {
 	#define logstatus
 	#define IFLAST(x,y,z) (x == z && y != z)
 
-	int numtok = 0, lasttoken = -1, i = 0, j = -1, currentToken = 0;
+	int numtok = 0, lasttoken = -1, i = 0, j = -1, currentToken = 0, lastusefultoken;
 	Token temptoken = {0, 0, 0};
 	bool tempUsed = false, inString = false;
 
-	while(i < fileSize) {
+	// todo add support for switches like tasm -65
+
+	while(i <= fileSize) {
 		if(toksCreated > 127) tokenbuffer = realloc(tokenbuffer, allocatedSize += 128*sizeof(Token));
 
 		switch(buffer[i]) {
-		case ' ' :
+		case ' ' : currentToken = TOK_WS_SEPARATOR; break;
 		case '\t':
-		case '\n': currentToken = TOK_SPACE; break;
+		case '\n': PUTTOKEN(TOK_WS_SEPARATOR, 0);
+		case '\r': i++; continue;
+		case '\0': currentToken = TOK_EOF; break;
 
 		case '(':
 		case ')':
@@ -83,8 +90,8 @@ LexedFile lex(char *buffer, int fileSize) {
 		case '<':
 		case ':': PUTTOKEN(buffer[i], 0);
 		case '"': inString = !inString; PUTTOKEN(TOK_QUOTE, 0);
-		case '%': inString = !inString; PUTTOKEN(TOK_PERCENT, 0);
-		case '!': inString = !inString; PUTTOKEN(TOK_LOGICALNOT, 0);
+		case '%': PUTTOKEN(TOK_PERCENT, 0);
+		case '!': PUTTOKEN(TOK_LOGICALNOT, 0);
 		case '0':
 		case '1':
 		case '2':
@@ -94,12 +101,12 @@ LexedFile lex(char *buffer, int fileSize) {
 		case '6':
 		case '7':
 		case '8':
-		case '9': if(j != -1) {currentToken = TOK_UNDEFINED; } else { numtok = numtok * 10 + (buffer[i] - '0'); currentToken = TOK_NUMBER; } break;
+		case '9': if(j != -1) {currentToken = lasttoken; } else { numtok = numtok * 10 + (buffer[i] - '0'); currentToken = TOK_NUMBER; } break;
 		default: if(j == -1) { j = i; } currentToken = (lasttoken == TOK_SWITCH)? TOK_SWITCH : TOK_UNDEFINED; break;
 		}
 
 		if(inString) { if(j == -1) j = i+1; currentToken = TOK_UNDEFINED; }
-		if(currentToken == TOK_UNDEFINED && lasttoken == TOK_DIVIDE) { currentToken = TOK_SWITCH; toksCreated -= 1; j = i-1; }
+		if(currentToken == TOK_UNDEFINED && (lasttoken == TOK_DIVIDE || lasttoken == TOK_MINUS)) { currentToken = TOK_SWITCH; toksCreated -= 1; j = i; }
 
 		if(IFLAST(lasttoken,currentToken,TOK_UNDEFINED) || IFLAST(lasttoken,currentToken,TOK_SWITCH)) {
 			auto processed = processMultichar(j, i, buffer);
@@ -110,6 +117,7 @@ LexedFile lex(char *buffer, int fileSize) {
 		}
 		else if(IFLAST(lasttoken,currentToken,TOK_NUMBER) && !inString) { logstatus; PUTTOKENNB(TOK_NUMBER, numtok); numtok = 0; }
 		lasttoken = currentToken;
+		if(currentToken != TOK_WS_SEPARATOR) lastusefultoken = currentToken;
 
 		if(tempUsed) {
 			tokenbuffer[toksCreated++] = temptoken;
@@ -123,6 +131,11 @@ LexedFile lex(char *buffer, int fileSize) {
 	#undef PUTTOKEN
 	#undef PUTTOKENNB
 	#undef logstatus
+
+	// atleast make the leaks smaller
+	//tokenbuffer = realloc(tokenbuffer, toksCreated*sizeof(Token));
+
+	// for(int i = 0; i < toksCreated; i++) printf("%llu %llu %llu\n", tokenbuffer[i].token, tokenbuffer[i].value, tokenbuffer[i].additionalData);
 
 	return {tokenbuffer, toksCreated};
 }

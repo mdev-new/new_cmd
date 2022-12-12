@@ -7,13 +7,19 @@
 
 enum TokenType {
 	TOK_UNDEFINED = 0,
+	TOK_EOF,
 	TOK_NUMBER,
 	TOK_SWITCH,
 
 	TOK_ENVVAR,
 	TOK_BUILTIN, // builtins that do not need to be tokens
 
-	TOK_SPACE = ' ',
+	TOK_FOR,
+	TOK_DO,
+	TOK_IF,
+	TOK_ELSE,
+
+	TOK_WS_SEPARATOR,
 	TOK_OPENING_BRACKET = '(',
 	TOK_CLOSING_BRACKET = ')',
 	TOK_PLUS = '+',
@@ -32,11 +38,6 @@ enum TokenType {
 	TOK_GT = '>',
 	TOK_COLON = ':',
 	TOK_QUOTE = '"',
-
-	TOK_FOR,
-	TOK_DO,
-	TOK_IF,
-	TOK_ELSE,
 };
 
 struct Token {

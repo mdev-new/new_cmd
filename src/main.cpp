@@ -29,13 +29,17 @@ int main(int argc, char *argv[]) {
 	char *buffer = malloc(size+1);
 	fread(buffer, size, 1, f);
 
+	printf("--- Read ---\n%s\n", buffer);
+
 	LexedFile lexed = lex(buffer, size);
 	ParsedFile parsed = parse(lexed);
 
-	printf("---\n");
+	printf("--- Lexed --- \n");
 	for(int i = 0; i < lexed.noOfTokens; i++) {
+		if(lexed.tokens[i].token == TOK_WS_SEPARATOR) continue;
+
 		if((lexed.tokens[i].token == TOK_UNDEFINED || lexed.tokens[i].token == TOK_SWITCH || lexed.tokens[i].token == TOK_BUILTIN) && lexed.tokens[i].value != 0) printf("%d *0x%x(\"%s\") %d\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].value, lexed.tokens[i].additionalData);
-		else if(lexed.tokens[i].token >= TOK_SPACE && lexed.tokens[i].token <= TOK_GT) printf("%c %d %d\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].additionalData);
+		else if(lexed.tokens[i].token >= TOK_WS_SEPARATOR && lexed.tokens[i].token <= TOK_GT) printf("%c %d %d\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].additionalData);
 		else printf("%d %d %d\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].additionalData);
 	}
 
