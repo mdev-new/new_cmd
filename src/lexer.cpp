@@ -15,6 +15,11 @@
 
 // its quite mad that this isnt implemented with a class, despite being in c++
 
+// this parser also has a few pros:
+//  1. doesnt unnecessairly loop when parsing numbers/multichar identifiers
+
+/// happy reading :)
+
 char *strndup(const char *str, size_t chars) {
     int n;
 
@@ -62,16 +67,20 @@ LexedFile lex(char *buffer, int fileSize) {
 	Token temptoken = {0, 0, 0};
 	bool tempUsed = false, inString = false;
 
-	// todo add support for switches like tasm -65
+	// todo report num ops in this format
+	// TOK_ADD TOK_NUMBER TOK_NUMBER
+	// or
+	// TOK_ADD TOK_NUMBER TOK_OPENING_BRACKET TOK_MUL TOK_NUMBER TOK_NUMBER TOK_TOK_CLOSING_BRACKET
+	// aka + x (* y z)
 
 	while(i <= fileSize) {
 		if(toksCreated > 127) tokenbuffer = realloc(tokenbuffer, allocatedSize += 128*sizeof(Token));
 
 		switch(buffer[i]) {
-		case ' ' : currentToken = TOK_WS_SEPARATOR; break;
+		case ' ' :
 		case '\t':
+		case '\r': currentToken = TOK_WS_SEPARATOR; break;
 		case '\n': PUTTOKEN(TOK_WS_SEPARATOR, 0);
-		case '\r': i++; continue;
 		case '\0': currentToken = TOK_EOF; break;
 
 		case '(':
@@ -90,7 +99,7 @@ LexedFile lex(char *buffer, int fileSize) {
 		case '<':
 		case ':': PUTTOKEN(buffer[i], 0);
 		case '"': inString = !inString; PUTTOKEN(TOK_QUOTE, 0);
-		case '%': PUTTOKEN(TOK_PERCENT, 0);
+		case '%': PUTTOKEN(TOK_PERCENT, 0); /// todo handle env vars right in lexer
 		case '!': PUTTOKEN(TOK_LOGICALNOT, 0);
 		case '0':
 		case '1':
@@ -107,6 +116,8 @@ LexedFile lex(char *buffer, int fileSize) {
 
 		if(inString) { if(j == -1) j = i+1; currentToken = TOK_UNDEFINED; }
 		if(currentToken == TOK_UNDEFINED && (lasttoken == TOK_DIVIDE || lasttoken == TOK_MINUS)) { currentToken = TOK_SWITCH; toksCreated -= 1; j = i; }
+
+		if(currentToken == TOK_MINUS && lastusefultoken == TOK_UNDEFINED) { currentToken = TOK_SWITCH; j = i; tempUsed = false; }
 
 		if(IFLAST(lasttoken,currentToken,TOK_UNDEFINED) || IFLAST(lasttoken,currentToken,TOK_SWITCH)) {
 			auto processed = processMultichar(j, i, buffer);

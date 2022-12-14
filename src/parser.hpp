@@ -3,6 +3,7 @@
 #include <cstring>
 #include <vector>
 #include <memory>
+#include <typeinfo>
 
 // original thought was to compile the whole program
 // into series of nodes that would get evaluated at runtime
@@ -10,7 +11,7 @@
 // I hate that this has to be here but whatever
 enum NodeType {
 	NODE_LEAF,
-	NODE_INNER
+	NODE_INNER,
 };
 
 enum InnerNodeType {
@@ -22,25 +23,107 @@ enum InnerNodeType {
 };
 
 enum LeafNodeType {
+	LNODE_NUMBER,
+	LNODE_STRING
 };
 
 struct Node {
-	uint16_t type; // .......yyyyyyyyx => x = leaf/inner, y = leaf/inner type
+	uint16_t type; // .......yyyyyyyyx => x = 0=leaf/1=inner, y = leaf/inner type};
 };
 
 struct LeafNode : public Node {
+	union {
+		const char *str;
+		int num;
+	};
 };
 
 struct InnerNode : public Node {
-	std::vector<std::unique_ptr<Node>> children;
+protected:
+	union {
+		struct { Node *children; int childrenCount; };
+		struct { Node *lhs; Node *rhs; };
+	};
 };
 
-struct BinOpNode : public InnerNode {};
+struct NumberNode : public LeafNode {
+	NumberNode(int n) {
+		this->num = n;
+	}
 
-struct AdditionNode : public BinOpNode {};
-struct SubtractionNode : public BinOpNode {};
-struct MultiplicationNode : public BinOpNode {};
-struct DivisionNode : public BinOpNode {};
+	int evaluate() { return num; }
+};
+
+struct StringNode : public LeafNode {
+	StringNode(const char *s) {
+		this->str = s;
+		this->type = NODE_LEAF | (LNODE_STRING << 1);
+	}
+
+	const char *evaluate() { return str; }
+};
+
+struct ParenthesesNode : public InnerNode {};
+
+struct BinOpNode : public InnerNode {
+	explicit BinOpNode(Node *lhs, Node *rhs) {
+		this->lhs = lhs;
+		this->rhs = rhs;
+	}
+
+	virtual Node* evaluate();
+};
+
+struct AdditionNode final : public BinOpNode {
+	using BinOpNode::BinOpNode;
+
+	AdditionNode(Node *lhs, Node *rhs)
+	:	BinOpNode(lhs, rhs)
+	{
+		this->type = NODE_INNER | (INODE_ADD << 1);
+	}
+
+	Node *evaluate() override {
+		int e_lhs = 0;
+		int e_rhs = 0;
+
+		if(lhs->type == (NODE_LEAF | (LNODE_NUMBER << 1)))
+			e_lhs = ((NumberNode*)lhs)->evaluate();
+
+		//else if(lhs->type == (NODE_INNER | (INODE_PARENTHESES << 1)))
+		//	e_lhs = ((NumberNode*)lhs)->evaluate()
+
+		if(rhs->type == (NODE_LEAF | (LNODE_NUMBER << 1)))
+			e_rhs = ((NumberNode*)rhs)->evaluate();
+
+		return new NumberNode(e_lhs + e_rhs);
+	}
+};
+
+struct SubtractionNode final : public BinOpNode {
+	SubtractionNode(Node *lhs, Node *rhs)
+	:	BinOpNode(lhs, rhs)
+	{
+		this->type = NODE_INNER | (INODE_SUB << 1);
+	}
+};
+
+struct MultiplicationNode final : public BinOpNode {
+	MultiplicationNode(Node *lhs, Node *rhs)
+	:	BinOpNode(lhs, rhs)
+	{
+		this->type = NODE_INNER | (INODE_MUL << 1);
+	}
+};
+
+struct DivisionNode final : public BinOpNode {
+	DivisionNode(Node *lhs, Node *rhs)
+	:	BinOpNode(lhs, rhs)
+	{
+		this->type = NODE_INNER | (INODE_DIV << 1);
+	}
+};
+
 struct EnvVarNode {};
 
 struct ParsedFile {
