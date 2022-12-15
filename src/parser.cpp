@@ -10,22 +10,30 @@
 
 // todo write a function that constructs leaf nodes for inner node x
 
-class Parser {
-private:
-	Node *parseExpr(Token *tokens, int current) {
-		switch(tokens[current].token) {
-		//case TOK_PLUS: return new AdditionNode(
+void sortToks(Token *start, Token *end) {
+	int curtok = -1, lastok = -1;
+	Token *current;
+
+	for(int i = 0; i < (end - start); i++) {
+		current = &start[i];
+
+		if(current->token >= TOK_PLUS && current->token <= TOK_DIVIDE) {
+			
 		}
 	}
+}
 
+class Parser {
+private:
 public:
 	Node** parse(const LexedFile &lexedFile) {
 
-	Token *current;
+	sortToks(&lexedFile.tokens[0], &lexedFile.tokens[lexedFile.noOfTokens-1]);
 
-	for(int i = 0; i < lexedFile.noOfTokens; i++) {
-		current = &lexedFile.tokens[i];
-	}
+	//Token *current;
+	// for(int i = 0; i < lexedFile.noOfTokens; i++) {
+	// 	current = &lexedFile.tokens[i];
+	// }
 	}
 };
 

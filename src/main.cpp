@@ -2,6 +2,7 @@
 // basic interpreter for files
 // repl support
 // fix memory leaks (free tokens, nodes, etc)
+// sorting algo for number expressions (lexer)
 
 // far targets:
 // caching

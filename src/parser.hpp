@@ -28,7 +28,7 @@ enum LeafNodeType {
 };
 
 struct Node {
-	uint16_t type; // .......yyyyyyyyx => x = 0=leaf/1=inner, y = leaf/inner type};
+	uint16_t type; // .......yyyyyyyyx => x = NodeType, y = InnerNodeType/LeafNodeType
 };
 
 struct LeafNode : public Node {
@@ -41,7 +41,7 @@ struct LeafNode : public Node {
 struct InnerNode : public Node {
 protected:
 	union {
-		struct { Node *children; int childrenCount; };
+		struct { Node **children; int childrenCount; };
 		struct { Node *lhs; Node *rhs; };
 	};
 };
@@ -63,10 +63,14 @@ struct StringNode : public LeafNode {
 	const char *evaluate() { return str; }
 };
 
-struct ParenthesesNode : public InnerNode {};
+struct ParenthesesNode : public InnerNode {
+	void append(Node *n) {
+		children[childrenCount++] = n;
+	}
+};
 
 struct BinOpNode : public InnerNode {
-	explicit BinOpNode(Node *lhs, Node *rhs) {
+	BinOpNode(Node *lhs, Node *rhs) {
 		this->lhs = lhs;
 		this->rhs = rhs;
 	}
@@ -75,8 +79,6 @@ struct BinOpNode : public InnerNode {
 };
 
 struct AdditionNode final : public BinOpNode {
-	using BinOpNode::BinOpNode;
-
 	AdditionNode(Node *lhs, Node *rhs)
 	:	BinOpNode(lhs, rhs)
 	{

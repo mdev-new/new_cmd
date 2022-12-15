@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <unordered_map>
 #include <utility>
+#include <queue>
 #include "interpreter.hh"
 
 /// !! IF AND WHEN IT MOSTLY WORKS !!
@@ -58,20 +59,22 @@ LexedFile lex(char *buffer, int fileSize) {
 	Token *tokenbuffer = malloc(allocatedSize);
 
 	#define PUTTOKEN(token, value)   temptoken = {token, value, 0}; tempUsed = true; currentToken = token; break
-	#define PUTTOKENNB(token, value) tokenbuffer[toksCreated++] = (Token){token, value, 0}
+	#define PUTTOKENNB(token, value) tokenbuffer[toksCreated++] = (Token){token, value, 0};
 	//#define logstatus printf("STAT;; %d %d %d %d %d %d %d %d %d\n", allocatedSize, toksCreated, numtok, lasttoken, currentToken, tempUsed, i, j, inString);
 	#define logstatus
 	#define IFLAST(x,y,z) (x == z && y != z)
 
-	int numtok = 0, lasttoken = -1, i = 0, j = -1, currentToken = 0, lastusefultoken;
+	int numtok = 0, lasttoken = -1, i = 0, j = -1, currentToken = 0, lastusefultoken, prelastusefultoken = 0, parenLevel = 0;
 	Token temptoken = {0, 0, 0};
 	bool tempUsed = false, inString = false;
 
 	// todo report num ops in this format
 	// TOK_ADD TOK_NUMBER TOK_NUMBER
 	// or
-	// TOK_ADD TOK_NUMBER TOK_OPENING_BRACKET TOK_MUL TOK_NUMBER TOK_NUMBER TOK_TOK_CLOSING_BRACKET
+	// TOK_ADD TOK_NUMBER TOK_OPENING_PAREN TOK_MUL TOK_NUMBER TOK_NUMBER TOK_TOK_CLOSING_PAREN
 	// aka + x (* y z)
+
+	//std::queue<Token> q;
 
 	while(i <= fileSize) {
 		if(toksCreated > 127) tokenbuffer = realloc(tokenbuffer, allocatedSize += 128*sizeof(Token));
@@ -83,21 +86,21 @@ LexedFile lex(char *buffer, int fileSize) {
 		case '\n': PUTTOKEN(TOK_WS_SEPARATOR, 0);
 		case '\0': currentToken = TOK_EOF; break;
 
-		case '(':
-		case ')':
-		case '+':
-		case '-':
-		case '*':
-		case '/':
-		case '=':
-		case '|':
-		case '&':
-		case '~':
-		case '^':
-		case ',':
-		case '>':
-		case '<':
-		case ':': PUTTOKEN(buffer[i], 0);
+		case '(': /*parenLevel++;*/ PUTTOKEN(TOK_OPENING_PAREN, 0);
+		case ')': /*parenLevel--;*/ PUTTOKEN(TOK_CLOSING_PAREN, 0);
+		case '+': PUTTOKEN(TOK_PLUS, 0);
+		case '-': PUTTOKEN(TOK_MINUS, 0);
+		case '*': PUTTOKEN(TOK_MULTIPLY, 0);
+		case '/': PUTTOKEN(TOK_DIVIDE, 0);
+		case '=': PUTTOKEN(TOK_EQUALS, 0);
+		case '|': PUTTOKEN(TOK_PIPE, 0);
+		case '&': PUTTOKEN(TOK_AND, 0);
+		case '~': PUTTOKEN(TOK_TILDE, 0);
+		case '^': PUTTOKEN(TOK_XOR, 0);
+		case ',': PUTTOKEN(TOK_COMMA, 0);
+		case '>': PUTTOKEN(TOK_GT, 0);
+		case '<': PUTTOKEN(TOK_LT, 0);
+		case ':': PUTTOKEN(TOK_COLON, 0);
 		case '"': inString = !inString; PUTTOKEN(TOK_QUOTE, 0);
 		case '%': PUTTOKEN(TOK_PERCENT, 0); /// todo handle env vars right in lexer
 		case '!': PUTTOKEN(TOK_LOGICALNOT, 0);
@@ -126,15 +129,30 @@ LexedFile lex(char *buffer, int fileSize) {
 			else { PUTTOKENNB(processed.token? processed.token : lasttoken, processed.ptr); tokenbuffer[toksCreated-1].additionalData = processed.size; }
 			j = -1;
 		}
-		else if(IFLAST(lasttoken,currentToken,TOK_NUMBER) && !inString) { logstatus; PUTTOKENNB(TOK_NUMBER, numtok); numtok = 0; }
-		lasttoken = currentToken;
-		if(currentToken != TOK_WS_SEPARATOR) lastusefultoken = currentToken;
+		else if(IFLAST(lasttoken,currentToken,TOK_NUMBER) && !inString) {
+			logstatus;
+			// if(!parenLevel) { PUTTOKENNB(TOK_NUMBER, numtok); numtok = 0; }
+			// else { q.push((Token){TOK_NUMBER, numtok, 0}); numtok = 0; };
+			PUTTOKENNB(TOK_NUMBER, numtok); numtok = 0;
+		}
+
+		// todo write sorting algorithm for number expressions
+
+		//if(currentToken == TOK_CLOSING_PAREN) {
+		//	while(!q.empty()) { tokenbuffer[toksCreated++] = (Token){q.front().token, q.front().value, 0}; q.pop(); }
+		//}
 
 		if(tempUsed) {
 			tokenbuffer[toksCreated++] = temptoken;
 			logstatus;
 			tempUsed = false;
 		}
+
+		lasttoken = currentToken;
+		if(currentToken != TOK_WS_SEPARATOR) lastusefultoken = currentToken;
+
+		//if(lasttoken >= TOK_PLUS && lasttoken <= TOK_AND && currentToken == TOK_NUMBER)
+		//	std::swap(tokenbuffer[toksCreated-2], tokenbuffer[toksCreated-1]);
 
 		i++;
 	}
