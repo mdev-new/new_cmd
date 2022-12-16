@@ -5,8 +5,12 @@
 #include <memory>
 #include <typeinfo>
 
+#define MKNTYP(NT,ST) (NT | (ST << 1))
+
 // original thought was to compile the whole program
 // into series of nodes that would get evaluated at runtime
+
+// a part of interpreter is already here
 
 // I hate that this has to be here but whatever
 enum NodeType {
@@ -57,7 +61,7 @@ struct NumberNode : public LeafNode {
 struct StringNode : public LeafNode {
 	StringNode(const char *s) {
 		this->str = s;
-		this->type = NODE_LEAF | (LNODE_STRING << 1);
+		this->type = MKNTYP(NODE_LEAF, LNODE_STRING);
 	}
 
 	const char *evaluate() { return str; }
@@ -75,27 +79,27 @@ struct BinOpNode : public InnerNode {
 		this->rhs = rhs;
 	}
 
-	virtual Node* evaluate();
+	virtual Node* evaluate() = 0;
 };
 
 struct AdditionNode final : public BinOpNode {
 	AdditionNode(Node *lhs, Node *rhs)
 	:	BinOpNode(lhs, rhs)
 	{
-		this->type = NODE_INNER | (INODE_ADD << 1);
+		this->type = MKNTYP(NODE_INNER, INODE_ADD);
 	}
 
 	Node *evaluate() override {
 		int e_lhs = 0;
 		int e_rhs = 0;
 
-		if(lhs->type == (NODE_LEAF | (LNODE_NUMBER << 1)))
+		if(lhs->type == MKNTYP(NODE_LEAF, LNODE_NUMBER))
 			e_lhs = ((NumberNode*)lhs)->evaluate();
 
 		//else if(lhs->type == (NODE_INNER | (INODE_PARENTHESES << 1)))
 		//	e_lhs = ((NumberNode*)lhs)->evaluate()
 
-		if(rhs->type == (NODE_LEAF | (LNODE_NUMBER << 1)))
+		if(rhs->type == MKNTYP(NODE_LEAF, LNODE_NUMBER))
 			e_rhs = ((NumberNode*)rhs)->evaluate();
 
 		return new NumberNode(e_lhs + e_rhs);
@@ -106,7 +110,10 @@ struct SubtractionNode final : public BinOpNode {
 	SubtractionNode(Node *lhs, Node *rhs)
 	:	BinOpNode(lhs, rhs)
 	{
-		this->type = NODE_INNER | (INODE_SUB << 1);
+		this->type = MKNTYP(NODE_INNER, INODE_SUB);
+	}
+
+	Node *evaluate() override {
 	}
 };
 
@@ -114,7 +121,10 @@ struct MultiplicationNode final : public BinOpNode {
 	MultiplicationNode(Node *lhs, Node *rhs)
 	:	BinOpNode(lhs, rhs)
 	{
-		this->type = NODE_INNER | (INODE_MUL << 1);
+		this->type = MKNTYP(NODE_INNER, INODE_MUL);
+	}
+
+	Node *evaluate() override {
 	}
 };
 
@@ -122,7 +132,10 @@ struct DivisionNode final : public BinOpNode {
 	DivisionNode(Node *lhs, Node *rhs)
 	:	BinOpNode(lhs, rhs)
 	{
-		this->type = NODE_INNER | (INODE_DIV << 1);
+		this->type = MKNTYP(NODE_INNER, INODE_DIV);
+	}
+
+	Node *evaluate() override {
 	}
 };
 

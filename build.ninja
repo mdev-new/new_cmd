@@ -1,7 +1,7 @@
 #cflags=-Og -ggdb
 
 cflags=-Os -flto -msse -msse2 -msse4.2 -mavx -mavx2 -mmmx -funsafe-math-optimizations -ftree-vectorize -ffast-math -ftree-slp-vectorize -fassociative-math -fvisibility=hidden -fcompare-debug-second -fno-stack-protector -fno-math-errno -fno-ident -fno-asynchronous-unwind-tables -Wl,-s,--gc-sections,--reduce-memory-overheads,--build-id=none -DNDEBUG
-shutup=-fpermissive -Wno-narrowing -Wno-unused-result -Wno-format
+shutup=-std=gnu++17 -fpermissive -Wno-narrowing -Wno-unused-result -Wno-format
 
 rule cpp
   command = g++ -MD -MF $out.depends -o $out -c $in $cflags $shutup

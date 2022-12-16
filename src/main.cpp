@@ -15,6 +15,9 @@
 // 1. speed
 // 2. as few of malloc's and free's as possible
 
+// thoughts:
+/// implement ()s right in lexer level?
+
 //#define WIN32_LEAN_AND_MEAN
 //#include <Windows.h>
 #include <cstdio>
@@ -24,6 +27,8 @@
 #include "parser.hpp"
 
 int main(int argc, char *argv[]) {
+	if(argc < 2) return 0;
+
 	FILE *f = fopen(argv[1], "r");
 	fseek(f, 0, SEEK_END);
 	int size = ftell(f);
@@ -44,7 +49,7 @@ int main(int argc, char *argv[]) {
 	for(int i = 0; i < lexed.noOfTokens; i++) {
 		if(lexed.tokens[i].token == TOK_WS_SEPARATOR) continue;
 
-		if((lexed.tokens[i].token == TOK_UNDEFINED || lexed.tokens[i].token == TOK_SWITCH || lexed.tokens[i].token == TOK_BUILTIN) && lexed.tokens[i].value != 0) printf("%d *0x%x(\"%s\") %d\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].value, lexed.tokens[i].additionalData);
+		if((lexed.tokens[i].token == TOK_UNDEFINED || lexed.tokens[i].token == TOK_SWITCH || lexed.tokens[i].token == TOK_BUILTIN) && lexed.tokens[i].value != 0) printf("%d 0x%x(&\"%s\") %d\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].value, lexed.tokens[i].additionalData);
 		//else if(lexed.tokens[i].token >= 33 && lexed.tokens[i].token <= 126) printf("%c %d %d\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].additionalData);
 		else printf("%d %d %d\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].additionalData);
 	}
