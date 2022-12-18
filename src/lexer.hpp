@@ -18,7 +18,7 @@ enum TokenType {
 	TOK_DO,
 	TOK_IF,
 	TOK_ELSE,
-
+    
 	TOK_WS_SEPARATOR, // 10
 	TOK_OPENING_PAREN,
 	TOK_CLOSING_PAREN,

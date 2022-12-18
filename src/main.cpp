@@ -26,6 +26,10 @@
 #include "lexer.hpp"
 #include "parser.hpp"
 
+void prettyPrint() {
+	
+}
+
 int main(int argc, char *argv[]) {
 	if(argc < 2) return 0;
 
@@ -42,23 +46,22 @@ int main(int argc, char *argv[]) {
 	LexedFile lexed = lex(buffer, size);
 	ParsedFile parsed = parse(lexed);
 
-	//Node *x = new NumberNode(1);
-	//printf("%s\n", typeid(x->getinstance()).name());
-
 	printf("--- Lexed --- \n");
 	for(int i = 0; i < lexed.noOfTokens; i++) {
 		if(lexed.tokens[i].token == TOK_WS_SEPARATOR) continue;
 
 		if((lexed.tokens[i].token == TOK_UNDEFINED || lexed.tokens[i].token == TOK_SWITCH || lexed.tokens[i].token == TOK_BUILTIN) && lexed.tokens[i].value != 0) printf("%d 0x%x(&\"%s\") %d\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].value, lexed.tokens[i].additionalData);
-		//else if(lexed.tokens[i].token >= 33 && lexed.tokens[i].token <= 126) printf("%c %d %d\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].additionalData);
 		else printf("%d %d %d\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].additionalData);
 	}
 
-	//printf("---\n");
+	printf("--- Parsed --- \n");
+	printf("%d\n", ((NumberNode*)((BinOpNode*)parsed.nodes[0])->evaluate())->evaluate());
 
-	//printf("%d\n", (*(MinusNode*)parsed.nodes.at(i)).evaluate());
-
-	//for(int i = 0; i < parsed.rootNode.noOfChildren; i++) printf("%d\n", parsed.rootNode.children[i].children[1].value);
-
+// 	for(int i = 0; i < parsed.ncount; i++) {
+// 		if(parsed.nodes[i]->type == MKNTYP(NODE_INNER, INODE_BINOP)) {
+// 			printf("%d\n", ((NumberNode*)((BinOpNode*)parsed.nodes[i])->evaluate())->evaluate());
+// 		}
+// 	}
+	
 	return 0;
 }

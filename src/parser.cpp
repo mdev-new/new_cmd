@@ -1,3 +1,8 @@
+// todo
+/// parse &, &&, |
+/// parse ()
+/// parse commands & their params
+
 #include "parser.hpp"
 #include "lexer.hpp"
 #include <cstdio>
@@ -10,6 +15,16 @@
 
 // todo write a function that constructs leaf nodes for inner node x
 
+// todo pretty print function
+
+int evalExpr(Node *root) {
+	switch(root->type) {
+	case MKNTYP(NODE_LEAF, LNODE_NUMBER): return ((NumberNode*)root)->evaluate();
+	case MKNTYP(NODE_INNER, INODE_PARENTHESES): return ((ParenthesesNode*)root)->evaluate();
+	case MKNTYP(NODE_INNER, INODE_BINOP): return ((NumberNode*)((BinOpNode*)root)->evaluate())->evaluate();
+	}
+}
+
 // todo implement sorting for parens as a whole
 int sortToks(Token *start, Token *end, int breaktok) {
 	int curtok = -1, lastok = -1, skip = 0, i = 0;
@@ -21,7 +36,7 @@ int sortToks(Token *start, Token *end, int breaktok) {
 		if(/*end&&*/current->token == TOK_OPENING_PAREN) { skip = sortToks(&start[i+1], nullptr, TOK_CLOSING_PAREN); continue; }
 
 		if(last && last->token == TOK_NUMBER && current->token >= TOK_PLUS && current->token <= TOK_DIVIDE) {
-			printf("swap: %d %d\n", start[i-1].token, start[i-2].token);
+			//printf("swap: %d %d\n", start[i-1].token, start[i-2].token);
 			std::swap(start[i], start[i-1]);
 		}
 	}
@@ -52,15 +67,26 @@ std::pair<int, Node*> makeNode(Token *tokens, int i) {
 		auto [rskip, rhs] = makeNode(tokens, i+2);
 		return std::make_pair(lskip+rskip, new DivisionNode(lhs, rhs));
 	} break;
+	case TOK_OPENING_PAREN: {
+		int j;
+		ParenthesesNode *n = new ParenthesesNode();
+		for(j = 1; tokens[j].token != TOK_CLOSING_PAREN; j++) {
+			auto [skip, node] = makeNode(tokens, j);
+			n->append(node);
+		}
+
+		return std::make_pair(j-i, n);
+	} break;
 	case TOK_NUMBER: {
 		return std::make_pair(1, new NumberNode(tokens[i].value));
 	} break;
 	}
 }
 
-inline void print_binary(unsigned int number) {
-    if (number >> 1) print_binary(number >> 1);
-    putc((number & 1) ? '1' : '0', stdout);
+// thanks stackoverflow :)
+void print_binary(unsigned int number) {
+	if (number >> 1) print_binary(number >> 1);
+	putc((number & 1) ? '1' : '0', stdout);
 }
 
 class Parser {
@@ -75,23 +101,20 @@ public:
 
 	Token *current = nullptr, *last = nullptr;
 	for(int i = 0, skip = 0; i < lexedFile.noOfTokens; i++, i+=skip, skip=0, last=current) {
+		if(created >= treshold) buf = realloc(buf, (treshold += 64)*sizeof(Node*));
 		current = &lexedFile.tokens[i];
 
-		if(created >= treshold) buf = realloc(buf, (treshold += 64)*sizeof(Node*));
-
-		// todo remove this switch; useless
+		// todo prolly remove this switch; useless
 		switch(current->token) {
+		case TOK_OPENING_PAREN:
+		case TOK_MULTIPLY:
+		case TOK_DIVIDE:
+		case TOK_MINUS:
 		case TOK_PLUS: { auto [_skip, node] = makeNode(lexedFile.tokens, i); buf[created++] = node; skip = _skip; } break;
 		}
 	}
 
-	printf("====\n");
-
-	for(int i = 0; i < created; i++) {
-		print_binary(buf[i]->type);
-		printf("\n");
-	}
-
+	buf = realloc(buf, created*sizeof(Node*));
 	return (ParsedFile){buf, created};
 	}
 };

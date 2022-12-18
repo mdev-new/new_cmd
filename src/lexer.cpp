@@ -22,15 +22,15 @@
 /// happy reading :)
 
 char *strndup(const char *str, size_t chars) {
-    int n;
+	int n;
 
-    char *buffer = (char *) malloc(chars +1);
-    if (buffer) {
-        for (n = 0; ((n < chars) && (str[n] != 0)) ; n++) buffer[n] = str[n];
-        buffer[n] = 0;
-    }
+	char *buffer = (char *) malloc(chars +1);
+	if (buffer) {
+		for (n = 0; ((n < chars) && (str[n] != 0)) ; n++) buffer[n] = str[n];
+		buffer[n] = 0;
+	}
 
-    return buffer;
+	return buffer;
 }
 
 struct processedMultichar {
@@ -67,14 +67,6 @@ LexedFile lex(char *buffer, int fileSize) {
 	int numtok = 0, lasttoken = -1, i = 0, j = -1, currentToken = 0, lastusefultoken, prelastusefultoken = 0, parenLevel = 0;
 	Token temptoken = {0, 0, 0};
 	bool tempUsed = false, inString = false;
-
-	// todo report num ops in this format
-	// TOK_ADD TOK_NUMBER TOK_NUMBER
-	// or
-	// TOK_ADD TOK_NUMBER TOK_OPENING_PAREN TOK_MUL TOK_NUMBER TOK_NUMBER TOK_TOK_CLOSING_PAREN
-	// aka + x (* y z)
-
-	//std::queue<Token> q;
 
 	while(i <= fileSize) {
 		if(toksCreated > 127) tokenbuffer = realloc(tokenbuffer, allocatedSize += 128*sizeof(Token));
@@ -125,8 +117,11 @@ LexedFile lex(char *buffer, int fileSize) {
 		if(IFLAST(lasttoken,currentToken,TOK_UNDEFINED) || IFLAST(lasttoken,currentToken,TOK_SWITCH)) {
 			auto processed = processMultichar(j, i, buffer);
 			logstatus;
-			if(processed.token != TOK_UNDEFINED && processed.token != TOK_BUILTIN) { PUTTOKENNB(processed.token, 0); }
-			else { PUTTOKENNB(processed.token? processed.token : lasttoken, processed.ptr); tokenbuffer[toksCreated-1].additionalData = processed.size; }
+			if(processed.token != TOK_UNDEFINED && processed.token != TOK_BUILTIN) {
+				PUTTOKENNB(processed.token, 0);
+			} else {
+				PUTTOKENNB(processed.token? processed.token : lasttoken, processed.ptr); tokenbuffer[toksCreated-1].additionalData = processed.size;
+			}
 			j = -1;
 		}
 		else if(IFLAST(lasttoken,currentToken,TOK_NUMBER) && !inString) {
@@ -135,12 +130,6 @@ LexedFile lex(char *buffer, int fileSize) {
 			// else { q.push((Token){TOK_NUMBER, numtok, 0}); numtok = 0; };
 			PUTTOKENNB(TOK_NUMBER, numtok); numtok = 0;
 		}
-
-		// todo write sorting algorithm for number expressions
-
-		//if(currentToken == TOK_CLOSING_PAREN) {
-		//	while(!q.empty()) { tokenbuffer[toksCreated++] = (Token){q.front().token, q.front().value, 0}; q.pop(); }
-		//}
 
 		if(tempUsed) {
 			tokenbuffer[toksCreated++] = temptoken;
@@ -151,9 +140,6 @@ LexedFile lex(char *buffer, int fileSize) {
 		lasttoken = currentToken;
 		if(currentToken != TOK_WS_SEPARATOR) lastusefultoken = currentToken;
 
-		//if(lasttoken >= TOK_PLUS && lasttoken <= TOK_AND && currentToken == TOK_NUMBER)
-		//	std::swap(tokenbuffer[toksCreated-2], tokenbuffer[toksCreated-1]);
-
 		i++;
 	}
 
@@ -162,9 +148,7 @@ LexedFile lex(char *buffer, int fileSize) {
 	#undef logstatus
 
 	// atleast make the leaks smaller
-	//tokenbuffer = realloc(tokenbuffer, toksCreated*sizeof(Token));
-
-	// for(int i = 0; i < toksCreated; i++) printf("%llu %llu %llu\n", tokenbuffer[i].token, tokenbuffer[i].value, tokenbuffer[i].additionalData);
+	tokenbuffer = realloc(tokenbuffer, toksCreated*sizeof(Token));
 
 	return {tokenbuffer, toksCreated};
 }

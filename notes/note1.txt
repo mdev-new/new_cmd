@@ -1,0 +1,4 @@
+Possible options for typecasting
+- std::unordered_map with static constructors
+- function with multiple return types
+- return struct containing union with all possible types and only populate the actual one
