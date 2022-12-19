@@ -12,8 +12,9 @@
 
 // a part of interpreter is already here
 
-// some c++ magic is happening here that i don't understad
-// HOW TF DOES THE BINOP NODE KNOW WHAT DERIVED FUNC TO SELECT
+// todo migrate to separate file
+
+// TODO EXPRESSION TREE
 
 // I hate that this has to be here but whatever
 enum NodeType {
@@ -52,86 +53,60 @@ struct InnerNode : public Node {
 };
 
 struct NumberNode final : public LeafNode {
-	NumberNode(int n) {
-		this->num = n;
-	}
-
-	int evaluate() { return num; }
+	NumberNode(int n);
+	int evaluate();
 };
 
 struct StringNode final : public LeafNode {
-	StringNode(const char *s) {
-		this->str = s;
-		this->type = MKNTYP(NODE_LEAF, LNODE_STRING);
-	}
-
-	const char *evaluate() { return str; }
+	StringNode(const char *s);
+	const char *evaluate();
 };
 
 struct ParenthesesNode final : public InnerNode {
 	int threshold = 16;
 
-	ParenthesesNode() {
-		this->childrenCount = 0;
-		this->children = malloc(threshold*sizeof(Node));
-	}
-	
-	void append(Node *n) {
-		if(childrenCount >= threshold) this->children = realloc(this->children, (threshold += 16)*sizeof(Node*));
-		children[childrenCount++] = n;
-		
-		printf("APPEND: %d %d\n", childrenCount, n->type);
-	}
-	
-	int evaluate() {
-		// todo implement the algorithm using skip things etc
-	}
+	ParenthesesNode();
+	void append(Node *n);
+	int evaluate();
 };
 
 struct BinOpNode : public InnerNode {
-	explicit BinOpNode(Node *lhs, Node *rhs) {
-		this->lhs = lhs;
-		this->rhs = rhs;
-		this->type = MKNTYP(NODE_INNER, INODE_BINOP);
-	}
-
-	virtual Node* evaluate() = 0;
+	explicit BinOpNode(Node *lhs, Node *rhs);
+	virtual int evaluate() = 0;
 };
 
 struct AdditionNode final : public BinOpNode {
 	using BinOpNode::BinOpNode;
-
-	// todo probably return numbers, not numbernodes
-	Node *evaluate() override {
-		return new NumberNode(evalExpr(lhs) + evalExpr(rhs));
-	}
+	int evaluate() override;
 };
 
 struct SubtractionNode final : public BinOpNode {
 	using BinOpNode::BinOpNode;
-
-	Node *evaluate() override {
-		return new NumberNode(evalExpr(lhs) - evalExpr(rhs));
-	}
+	int evaluate() override;
 };
 
 struct MultiplicationNode final : public BinOpNode {
 	using BinOpNode::BinOpNode;
-
-	Node *evaluate() override {
-		return new NumberNode(evalExpr(lhs) * evalExpr(rhs));
-	}
+	int evaluate() override;
 };
 
 struct DivisionNode final : public BinOpNode {
 	using BinOpNode::BinOpNode;
-
-	Node *evaluate() override {
-		return new NumberNode(evalExpr(lhs) / evalExpr(rhs));
-	}
+	int evaluate() override;
 };
 
-struct EnvVarNode {};
+struct EnvVarNode final : public Node {
+	char *name;
+	char *value;
+
+	EnvVarNode(const char *name);
+	void init();
+	const char *evaluate(bool delayedExpansion);
+};
+
+// i have no idea how to implement this.
+struct CallNode final : public Node {
+};
 
 struct ParsedFile {
 	Node** nodes;

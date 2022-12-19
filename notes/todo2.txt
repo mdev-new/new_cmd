@@ -1,0 +1,5 @@
+Todo
+[ ] complete expression parsing
+[ ] parse commands and their delimiters (&&, ||, etc)
+[ ] builtins (if, else, for, do, set, ...)
+[ ] fix leaks

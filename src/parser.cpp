@@ -16,6 +16,7 @@
 // todo write a function that constructs leaf nodes for inner node x
 
 // todo pretty print function
+// todo slight refactor, these funcs are stupid
 
 int evalExpr(Node *root) {
 	switch(root->type) {
@@ -25,7 +26,6 @@ int evalExpr(Node *root) {
 	}
 }
 
-// todo implement sorting for parens as a whole
 int sortToks(Token *start, Token *end, int breaktok) {
 	int curtok = -1, lastok = -1, skip = 0, i = 0;
 	Token *current, *last = nullptr;
@@ -70,8 +70,8 @@ std::pair<int, Node*> makeNode(Token *tokens, int i) {
 	case TOK_OPENING_PAREN: {
 		int j;
 		ParenthesesNode *n = new ParenthesesNode();
-		for(j = 1; tokens[j].token != TOK_CLOSING_PAREN; j++) {
-			auto [skip, node] = makeNode(tokens, j);
+		for(j = i+1; tokens[j].token != TOK_CLOSING_PAREN; j++) {
+			Node *node = makeNode(tokens, j).second;
 			n->append(node);
 		}
 
@@ -80,13 +80,14 @@ std::pair<int, Node*> makeNode(Token *tokens, int i) {
 	case TOK_NUMBER: {
 		return std::make_pair(1, new NumberNode(tokens[i].value));
 	} break;
-	}
-}
 
-// thanks stackoverflow :)
-void print_binary(unsigned int number) {
-	if (number >> 1) print_binary(number >> 1);
-	putc((number & 1) ? '1' : '0', stdout);
+	case TOK_SWITCH:
+	case TOK_UNDEFINED: {
+		return std::make_pair(1, new StringNode((char*)tokens[i].value));
+	}
+	
+	default: return std::make_pair(0, nullptr);
+	}
 }
 
 class Parser {
@@ -100,22 +101,18 @@ public:
 	sortToks(&lexedFile.tokens[0], &lexedFile.tokens[lexedFile.noOfTokens-1], -1);
 
 	Token *current = nullptr, *last = nullptr;
-	for(int i = 0, skip = 0; i < lexedFile.noOfTokens; i++, i+=skip, skip=0, last=current) {
+	for(int i = 0, skip = 0; i < lexedFile.noOfTokens; i=i+1+skip, skip=0, last=current) {
 		if(created >= treshold) buf = realloc(buf, (treshold += 64)*sizeof(Node*));
 		current = &lexedFile.tokens[i];
 
-		// todo prolly remove this switch; useless
-		switch(current->token) {
-		case TOK_OPENING_PAREN:
-		case TOK_MULTIPLY:
-		case TOK_DIVIDE:
-		case TOK_MINUS:
-		case TOK_PLUS: { auto [_skip, node] = makeNode(lexedFile.tokens, i); buf[created++] = node; skip = _skip; } break;
-		}
+		auto [_skip, node] = makeNode(lexedFile.tokens, i);
+		if(_skip != node != NULL) buf[created++] = node;
+		skip = _skip;
 	}
 
 	buf = realloc(buf, created*sizeof(Node*));
 	return (ParsedFile){buf, created};
+	
 	}
 };
 

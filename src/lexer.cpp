@@ -12,12 +12,15 @@
 /// i wish and hope ANYONE doesn't have to read (and understand) this after me.
 
 // current bugs with this:
-// 1. modulo & logical not operatos fuck everything up (what a great choice to use operator also as a variable access, right?)
+// 1. modulo & logical not operatos fuck everything up (what a great choice to use math operator also as a variable access, right?)
 
 // its quite mad that this isnt implemented with a class, despite being in c++
 
 // this parser also has a few pros:
 //  1. doesnt unnecessairly loop when parsing numbers/multichar identifiers
+
+// if you absolutely need to change something here (ie something is broken), do so, but with caution
+// otherwise please don't.
 
 /// happy reading :)
 
@@ -43,7 +46,7 @@ struct processedMultichar {
 processedMultichar processMultichar(int start, int end, char *buffer) {
 	char *token = strndup(buffer+start, end - start);
 	uint64_t hashed = hash(token);
-	//printf("CALL %d :: %s ; %llu \n", end - start, token, hashed);
+	printf("CALL %d :: %s ; %llu \n", end - start, token, hashed);
 	try {
 		int ret = multicharMapping.at(hashed).first;
 		if(ret == TOK_BUILTIN)
@@ -55,8 +58,8 @@ processedMultichar processMultichar(int start, int end, char *buffer) {
 }
 
 LexedFile lex(char *buffer, int fileSize) {
-	int allocatedSize = 128*sizeof(Token), toksCreated= 0;
-	Token *tokenbuffer = malloc(allocatedSize);
+	int treshold = 128, toksCreated= 0;
+	Token *tokenbuffer = malloc(treshold*sizeof(Token));
 
 	#define PUTTOKEN(token, value)   temptoken = {token, value, 0}; tempUsed = true; currentToken = token; break
 	#define PUTTOKENNB(token, value) tokenbuffer[toksCreated++] = (Token){token, value, 0};
@@ -69,7 +72,7 @@ LexedFile lex(char *buffer, int fileSize) {
 	bool tempUsed = false, inString = false;
 
 	while(i <= fileSize) {
-		if(toksCreated > 127) tokenbuffer = realloc(tokenbuffer, allocatedSize += 128*sizeof(Token));
+		if(toksCreated+1 >= treshold) tokenbuffer = realloc(tokenbuffer, (treshold += 128)*sizeof(Token));
 
 		switch(buffer[i]) {
 		case ' ' :
@@ -94,7 +97,8 @@ LexedFile lex(char *buffer, int fileSize) {
 		case '<': PUTTOKEN(TOK_LT, 0);
 		case ':': PUTTOKEN(TOK_COLON, 0);
 		case '"': inString = !inString; PUTTOKEN(TOK_QUOTE, 0);
-		case '%': PUTTOKEN(TOK_PERCENT, 0); /// todo handle env vars right in lexer
+		case '\'': inString = !inString; PUTTOKEN(TOK_SINGLEQUOTE, 0);
+		case '%': PUTTOKEN(TOK_PERCENT, 0);
 		case '!': PUTTOKEN(TOK_LOGICALNOT, 0);
 		case '0':
 		case '1':
@@ -109,18 +113,29 @@ LexedFile lex(char *buffer, int fileSize) {
 		default: if(j == -1) { j = i; } currentToken = (lasttoken == TOK_SWITCH)? TOK_SWITCH : TOK_UNDEFINED; break;
 		}
 
-		if(inString) { if(j == -1) j = i+1; currentToken = TOK_UNDEFINED; }
-		if(currentToken == TOK_UNDEFINED && (lasttoken == TOK_DIVIDE || lasttoken == TOK_MINUS)) { currentToken = TOK_SWITCH; toksCreated -= 1; j = i; }
+		if(inString) {
+			if(j == -1) j = i+1;
+			currentToken = TOK_UNDEFINED;
+		}
+		if(currentToken == TOK_UNDEFINED && (lasttoken == TOK_DIVIDE || lasttoken == TOK_MINUS)) {
+			currentToken = TOK_SWITCH;
+			toksCreated -= 1;
+			j = i;
+		}
 
-		if(currentToken == TOK_MINUS && lastusefultoken == TOK_UNDEFINED) { currentToken = TOK_SWITCH; j = i; tempUsed = false; }
+		if(currentToken == TOK_MINUS && lastusefultoken == TOK_UNDEFINED) {
+			currentToken = TOK_SWITCH; j = i;
+			tempUsed = false;
+		}
 
-		if(IFLAST(lasttoken,currentToken,TOK_UNDEFINED) || IFLAST(lasttoken,currentToken,TOK_SWITCH)) {
+		if((IFLAST(lasttoken,currentToken,TOK_UNDEFINED) || IFLAST(lasttoken,currentToken,TOK_SWITCH)) && j != i) {
 			auto processed = processMultichar(j, i, buffer);
 			logstatus;
 			if(processed.token != TOK_UNDEFINED && processed.token != TOK_BUILTIN) {
 				PUTTOKENNB(processed.token, 0);
 			} else {
-				PUTTOKENNB(processed.token? processed.token : lasttoken, processed.ptr); tokenbuffer[toksCreated-1].additionalData = processed.size;
+				PUTTOKENNB(processed.token? processed.token : lasttoken, processed.ptr);
+				tokenbuffer[toksCreated-1].additionalData = processed.size;
 			}
 			j = -1;
 		}
