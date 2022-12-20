@@ -9,6 +9,7 @@ enum TokenType {
 	TOK_EOF,
 	TOK_NUMBER,
 	TOK_SWITCH,
+	TOK_STRING,
 
 	TOK_ENVVAR,
 	TOK_BUILTIN, // builtins that do not need to be tokens
@@ -18,12 +19,12 @@ enum TokenType {
 	TOK_IF,
 	TOK_ELSE,
 
-	TOK_WS_SEPARATOR, // 10
+	TOK_WS_SEPARATOR, // 11
 	TOK_OPENING_PAREN,
 	TOK_CLOSING_PAREN,
 	TOK_PLUS,
 	TOK_MINUS,
-	TOK_MULTIPLY, // 15
+	TOK_MULTIPLY, // 16
 	TOK_DIVIDE,
 	TOK_AND,
 	TOK_EQUALS,

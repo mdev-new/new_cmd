@@ -3,3 +3,5 @@ bin/
 a.out
 .ninja_*
 /*.s
+out.txt
+out1.txt

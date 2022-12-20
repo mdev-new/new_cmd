@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
 	for(int i = 0; i < lexed.noOfTokens; i++) {
 		if(lexed.tokens[i].token == TOK_WS_SEPARATOR) continue;
 
-		if((lexed.tokens[i].token == TOK_UNDEFINED || lexed.tokens[i].token == TOK_SWITCH || lexed.tokens[i].token == TOK_BUILTIN) && lexed.tokens[i].value != 0) printf("%d 0x%llx(&\"%s\") %d\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].value, lexed.tokens[i].additionalData);
+		if((lexed.tokens[i].token == TOK_UNDEFINED || lexed.tokens[i].token == TOK_SWITCH || lexed.tokens[i].token == TOK_BUILTIN || lexed.tokens[i].token == TOK_STRING) && lexed.tokens[i].value != 0) printf("%d 0x%llx(%s) %d\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].value, lexed.tokens[i].additionalData);
 		else printf("%d %d %d\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].additionalData);
 	}
 

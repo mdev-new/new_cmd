@@ -3,7 +3,6 @@
 #include <cstdio>
 #include <unordered_map>
 #include <utility>
-#include <queue>
 #include "interpreter.hh"
 
 /// !! IF AND WHEN IT MOSTLY WORKS !!
@@ -27,7 +26,7 @@
 char *strndup(const char *str, size_t chars) {
 	int n;
 
-	char *buffer = (char *) malloc(chars +1);
+	char *buffer = malloc(chars+1);
 	if (buffer) {
 		for (n = 0; ((n < chars) && (str[n] != 0)) ; n++) buffer[n] = str[n];
 		buffer[n] = 0;
@@ -46,7 +45,7 @@ struct processedMultichar {
 processedMultichar processMultichar(int start, int end, char *buffer) {
 	char *token = strndup(buffer+start, end - start);
 	uint64_t hashed = hash(token);
-	printf("CALL %d :: %s ; %llu \n", end - start, token, hashed);
+	//printf("CALL %d :: %s ; %llu \n", end - start, token, hashed);
 	try {
 		int ret = multicharMapping.at(hashed).first;
 		if(ret == TOK_BUILTIN)
@@ -96,10 +95,10 @@ LexedFile lex(char *buffer, int fileSize) {
 		case '>': PUTTOKEN(TOK_GT, 0);
 		case '<': PUTTOKEN(TOK_LT, 0);
 		case ':': PUTTOKEN(TOK_COLON, 0);
-		case '"': inString = !inString; PUTTOKEN(TOK_QUOTE, 0);
-		case '\'': inString = !inString; PUTTOKEN(TOK_SINGLEQUOTE, 0);
-		case '%': PUTTOKEN(TOK_PERCENT, 0);
-		case '!': PUTTOKEN(TOK_LOGICALNOT, 0);
+		case '"': 
+		case '\'': inString = !inString; break;
+		case '%': if(lastusefultoken != TOK_NUMBER || lastusefultoken != TOK_OPENING_PAREN) inString = !inString; else PUTTOKEN(TOK_PERCENT, 0); break;
+		case '!': if(lastusefultoken != TOK_NUMBER || lastusefultoken != TOK_OPENING_PAREN) inString = !inString; else PUTTOKEN(TOK_LOGICALNOT, 0); break;
 		case '0':
 		case '1':
 		case '2':
@@ -115,7 +114,8 @@ LexedFile lex(char *buffer, int fileSize) {
 
 		if(inString) {
 			if(j == -1) j = i+1;
-			currentToken = TOK_UNDEFINED;
+			currentToken = TOK_STRING;
+			tempUsed = false;
 		}
 		if(currentToken == TOK_UNDEFINED && (lasttoken == TOK_DIVIDE || lasttoken == TOK_MINUS)) {
 			currentToken = TOK_SWITCH;
@@ -128,21 +128,19 @@ LexedFile lex(char *buffer, int fileSize) {
 			tempUsed = false;
 		}
 
-		if((IFLAST(lasttoken,currentToken,TOK_UNDEFINED) || IFLAST(lasttoken,currentToken,TOK_SWITCH)) && j != i) {
-			auto processed = processMultichar(j, i, buffer);
+		if((IFLAST(lasttoken,currentToken,TOK_UNDEFINED) || IFLAST(lasttoken,currentToken,TOK_SWITCH) || (IFLAST(lasttoken,currentToken,TOK_STRING) && j != i-1)) && j != i) {
+			auto processed = processMultichar(j, (lasttoken != TOK_STRING)? i : i-1, buffer);
 			logstatus;
-			if(processed.token != TOK_UNDEFINED && processed.token != TOK_BUILTIN) {
+			if(processed.token != TOK_UNDEFINED && processed.token != TOK_BUILTIN && processed.token != -1) {
 				PUTTOKENNB(processed.token, 0);
 			} else {
-				PUTTOKENNB(processed.token? processed.token : lasttoken, processed.ptr);
+				PUTTOKENNB(processed.token > 0? processed.token : lasttoken, processed.ptr);
 				tokenbuffer[toksCreated-1].additionalData = processed.size;
 			}
 			j = -1;
 		}
 		else if(IFLAST(lasttoken,currentToken,TOK_NUMBER) && !inString) {
 			logstatus;
-			// if(!parenLevel) { PUTTOKENNB(TOK_NUMBER, numtok); numtok = 0; }
-			// else { q.push((Token){TOK_NUMBER, numtok, 0}); numtok = 0; };
 			PUTTOKENNB(TOK_NUMBER, numtok); numtok = 0;
 		}
 
@@ -164,6 +162,5 @@ LexedFile lex(char *buffer, int fileSize) {
 
 	// atleast make the leaks smaller
 	tokenbuffer = realloc(tokenbuffer, toksCreated*sizeof(Token));
-
 	return {tokenbuffer, toksCreated};
 }
