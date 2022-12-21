@@ -17,6 +17,4 @@ struct CallParams {
 	Node *params;
 };
 using CallPtr = int(*)(CallParams &callParams);
-extern std::unordered_map<uint64_t, std::pair<uint16_t, CallPtr>> multicharMapping;
-
-int Interpret(const ParsedFile &parsed);
+extern volatile std::unordered_map<uint64_t, std::pair<uint16_t, CallPtr>> multicharMapping;

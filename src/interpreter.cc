@@ -4,15 +4,20 @@
 // if we're losing time in lexer or parser, doesnt really matter
 // they run only once, on startup
 // this, however, will run in a loop.
-// this project's future depends on the speed
+// this project's future depends on the speed (and also extensibility)
 
 #define IFUN(name) int name(CallParams &callParams)
 #define fe(x,y,z) {hash(x), std::make_pair(y,z)},
 
-IFUN(doSet) {}
-IFUN(doExit) {}
+IFUN(doSet) {
+	return 0;
+}
 
-std::unordered_map<uint64_t, std::pair<uint16_t, CallPtr>> multicharMapping = {
+IFUN(doExit) {
+	return 0;
+}
+
+volatile std::unordered_map<uint64_t, std::pair<uint16_t, CallPtr>> multicharMapping = {
 	fe("for", TOK_FOR, nullptr)
 	fe("do", TOK_DO, nullptr)
 	fe("if", TOK_IF, nullptr)
@@ -20,7 +25,3 @@ std::unordered_map<uint64_t, std::pair<uint16_t, CallPtr>> multicharMapping = {
 	fe("set", TOK_BUILTIN, doSet)
 	fe("exit", TOK_BUILTIN, doExit)
 };
-
-int Interpret(const ParsedFile &parsed) {
-
-}

@@ -1,7 +1,15 @@
 #pragma once
 #include "parser.hpp"
 
-// like interpreter, this HAS to be optimized aswell
+// like interpreter, this file HAS to be optimized aswell
+
+int evalExpr(Node *root) {
+	switch(root->type) {
+	case MKNTYP(NODE_LEAF, LNODE_NUMBER): return ((NumberNode*)root)->evaluate();
+	case MKNTYP(NODE_INNER, INODE_PARENTHESES): return ((ParenthesesNode*)root)->evaluate();
+	case MKNTYP(NODE_INNER, INODE_BINOP): return ((NumberNode*)((BinOpNode*)root)->evaluate())->evaluate();
+	}
+}
 
 /* === NumberNode === */
 

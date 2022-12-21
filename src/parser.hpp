@@ -7,13 +7,6 @@
 
 #define MKNTYP(NT,ST) (NT | (ST << 1))
 
-// original thought was to compile the whole program
-// into series of nodes that would get evaluated at runtime
-
-// a part of interpreter is already here
-
-// todo migrate to separate file
-
 // TODO EXPRESSION TREE
 
 // I hate that this has to be here but whatever
@@ -36,6 +29,7 @@ struct Node {
 	uint16_t type; // .......yyyyyyyyx => x = NodeType, y = InnerNodeType/LeafNodeType
 };
 
+// implemented in nodeimpl.cxx
 int evalExpr(Node *root);
 
 struct LeafNode : public Node {
@@ -108,9 +102,11 @@ struct EnvVarNode final : public Node {
 struct CallNode final : public Node {
 };
 
-struct ParsedFile {
-	Node** nodes;
-	int ncount;
-};
+class Parser {
+private:
+	Lexer lexer;
 
-ParsedFile parse(LexedFile &lexedFile);
+public:
+	Parser(char *buffer, size_t length);
+	void parse();
+};

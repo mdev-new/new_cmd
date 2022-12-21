@@ -1,1 +1,1 @@
-if "%a%"=="%b%" echo !hello:ll=__!
+exit for if else do

@@ -23,7 +23,6 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include "lexer.hpp"
 #include "parser.hpp"
 
 // void prettyPrint(Node *n) {
@@ -37,6 +36,8 @@
 // 			prettyPrint(((InnerNode*)n)->lhs);
 // 			prettyPrint(((InnerNode*)n)->rhs);
 // 		}
+// 	} else { // leaf
+// 		printf();
 // 	}
 // }
 
@@ -53,27 +54,12 @@ int main(int argc, char *argv[]) {
 	char *buffer = malloc(size+1);
 	fread(buffer, size, 1, f);
 
+	Parser p(buffer, size);
+	p.parse();
+
 	//printf("--- Read ---\n%s\n", buffer);
 
-	LexedFile lexed = lex(buffer, size);
-	//ParsedFile parsed = parse(lexed);
-
-	printf("--- Lexed --- \n");
-	for(int i = 0; i < lexed.noOfTokens; i++) {
-		if(lexed.tokens[i].token == TOK_WS_SEPARATOR) continue;
-
-		if((lexed.tokens[i].token == TOK_UNDEFINED || lexed.tokens[i].token == TOK_SWITCH || lexed.tokens[i].token == TOK_BUILTIN || lexed.tokens[i].token == TOK_STRING) && lexed.tokens[i].value != 0) printf("%d 0x%llx(%s) %d\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].value, lexed.tokens[i].additionalData);
-		else printf("%d %d %d\n", lexed.tokens[i].token, lexed.tokens[i].value, lexed.tokens[i].additionalData);
-	}
-
-	printf("--- Parsed --- \n");
-	//printf("%d\n", ((NumberNode*)((BinOpNode*)parsed.nodes[0])->evaluate())->evaluate());
-
-// 	for(int i = 0; i < parsed.ncount; i++) {
-// 		if(parsed.nodes[i]->type == MKNTYP(NODE_INNER, INODE_BINOP)) {
-// 			printf("%d\n", ((NumberNode*)((BinOpNode*)parsed.nodes[i])->evaluate())->evaluate());
-// 		}
-// 	}
-	
+	free(buffer);
+	fclose(f);
 	return 0;
 }
