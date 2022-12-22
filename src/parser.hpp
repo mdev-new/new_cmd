@@ -109,4 +109,6 @@ private:
 public:
 	Parser(char *buffer, size_t length);
 	void parse();
+
+	std::vector<Node*> nodes;
 };

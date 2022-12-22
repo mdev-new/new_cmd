@@ -5,8 +5,8 @@
 #include <utility>
 
 enum TokenType {
-	TOK_INVAL = -1,
-	TOK_EOF = 0,
+	TOK_INVAL = 0,
+	TOK_EOF = 1,
 	TOK_SPACE,
 	TOK_ID,
 	TOK_NUMBER,
@@ -55,8 +55,8 @@ public:
 	Token get();
 	std::pair<size_t, Token *> lexBuffer();
 
-	bool eof() { return idx >= length || buffer[idx] == 0; }
-	bool isnum(char c) {
+	bool eof() { return length == 0 || idx >= length || buffer[idx] == 0; }
+	bool isdigit(char c) {
 		return (c >= '0' && c <= '9');
 	}
 
@@ -65,6 +65,6 @@ public:
 	}
 	
 	bool validIdBody(char c) {
-		return validIdStart(buffer[idx]) || isnum(buffer[idx]);
+		return validIdStart(buffer[idx]) || isdigit(buffer[idx]);
 	}
 };

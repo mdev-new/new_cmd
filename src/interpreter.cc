@@ -17,7 +17,7 @@ IFUN(doExit) {
 	return 0;
 }
 
-volatile std::unordered_map<uint64_t, std::pair<uint16_t, CallPtr>> multicharMapping = {
+volatile std::unordered_map<size_t, std::pair<uint16_t, CallPtr>, Hasher> multicharMapping = {
 	fe("for", TOK_FOR, nullptr)
 	fe("do", TOK_DO, nullptr)
 	fe("if", TOK_IF, nullptr)

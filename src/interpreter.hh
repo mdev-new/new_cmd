@@ -13,8 +13,16 @@
 	return h;
 }
 
+// lets do little bit of trolling
+// to avoid double hashing
+struct Hasher {
+	size_t operator()(const size_t &h) const {
+		return h;
+	}
+};
+
 struct CallParams {
 	Node *params;
 };
 using CallPtr = int(*)(CallParams &callParams);
-extern volatile std::unordered_map<uint64_t, std::pair<uint16_t, CallPtr>> multicharMapping;
+extern volatile std::unordered_map<size_t, std::pair<uint16_t, CallPtr>, Hasher> multicharMapping;

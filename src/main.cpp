@@ -24,6 +24,7 @@
 #include <cstdlib>
 
 #include "parser.hpp"
+#include "interpreter.hh"
 
 // void prettyPrint(Node *n) {
 // 	if(n->type & 1) { // inner
@@ -57,7 +58,12 @@ int main(int argc, char *argv[]) {
 	Parser p(buffer, size);
 	p.parse();
 
-	//printf("--- Read ---\n%s\n", buffer);
+	for(Node *n : p.nodes) {
+		if(n->type == MKNTYP(NODE_INNER, INODE_BINOP)) {
+			BinOpNode *bn = n;
+			printf("%d\n", bn->evaluate());
+		}
+	}
 
 	free(buffer);
 	fclose(f);

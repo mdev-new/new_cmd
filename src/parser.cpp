@@ -9,31 +9,28 @@
 #include <cstdlib>
 #include <memory>
 
-// we need to probably parse from inside out somehow
-// that means first make all leaf nodes for the inner node x and then
-// construct x
+// TODO sort operations; smth like
+// a+b => +ab
+// a+(b/c)*d => *d+a(/bc)
 
-// todo write a function that constructs leaf nodes for inner node x
+int SortTokens(Token *start, size_t len, int breaktok) {
+	Token *current = start, *last = nullptr;
+	long i, skip;
 
-// todo pretty print function
-// todo slight refactor, these funcs are stupid
-
-int sortToks(Token *start, Token *end, int breaktok) {
-	int curtok = -1, lastok = -1, skip = 0, i = 0;
-	Token *current, *last = nullptr;
-
-	for(; (end != nullptr && i < (end - start)) || (end == nullptr && current->type != breaktok); i++,i+=skip,skip=0, last=current) {
+	for(i = skip = 0; ((breaktok != 0)? (current->type != breaktok) : (i < len)); i+=1+skip, skip=0) {
 		current = &start[i];
+		if(current->type == TOK_LEFTPAREN) {
+			skip = SortTokens(&start[i+1], 0, TOK_RIGHTPAREN);
+			continue;
+		}
 
-		if(/*end&&*/current->type == TOK_LEFTPAREN) { skip = sortToks(&start[i+1], nullptr, TOK_RIGHTPAREN); continue; }
-
-		if(last && last->type == TOK_NUMBER && current->type >= TOK_PLUS && current->type <= TOK_SLASH) {
-			//printf("swap: %d %d\n", start[i-1].token, start[i-2].token);
+		if(last && (last->type == TOK_NUMBER) && current->type >= TOK_PLUS && current->type <= TOK_SLASH) {
 			std::swap(start[i], start[i-1]);
 		}
+
+		last = current;
 	}
 
-	if(end == nullptr && breaktok) return i+1;
 	return i;
 }
 
@@ -44,21 +41,25 @@ std::pair<int, Node*> makeNode(Token *tokens, int i) {
 		auto [rskip, rhs] = makeNode(tokens, i+2);
 		return std::make_pair(lskip+rskip, new AdditionNode(lhs, rhs));
 	} break;
+
 	case TOK_MINUS: {
 		auto [lskip, lhs] = makeNode(tokens, i+1);
 		auto [rskip, rhs] = makeNode(tokens, i+2);
 		return std::make_pair(lskip+rskip, new SubtractionNode(lhs, rhs));
 	} break;
+
 	case TOK_ASTERISK: {
 		auto [lskip, lhs] = makeNode(tokens, i+1);
 		auto [rskip, rhs] = makeNode(tokens, i+2);
 		return std::make_pair(lskip+rskip, new MultiplicationNode(lhs, rhs));
 	} break;
+
 	case TOK_SLASH: {
 		auto [lskip, lhs] = makeNode(tokens, i+1);
 		auto [rskip, rhs] = makeNode(tokens, i+2);
 		return std::make_pair(lskip+rskip, new DivisionNode(lhs, rhs));
 	} break;
+
 	case TOK_LEFTPAREN: {
 		int j;
 		ParenthesesNode *n = new ParenthesesNode();
@@ -69,15 +70,15 @@ std::pair<int, Node*> makeNode(Token *tokens, int i) {
 
 		return std::make_pair(j-i, n);
 	} break;
+
 	case TOK_NUMBER: {
 		return std::make_pair(1, new NumberNode(tokens[i].value));
 	} break;
 
-//	case TOK_SWITCH:
 	case TOK_ID: {
 		return std::make_pair(1, new StringNode((char*)tokens[i].value));
 	}
-	
+
 	default: return std::make_pair(0, nullptr);
 	}
 }
@@ -89,11 +90,15 @@ Parser::Parser(char *buffer, size_t length)
 
 void Parser::parse() {
 	auto [noOfTokens, tokens] = lexer.lexBuffer();
-	int i;
+	int i, skip;
 
-	//sortToks(&tokens[0], &tokens[noOfTokens], 0);
+	SortTokens(tokens, noOfTokens, 0);
 
-	for(i = 0; i < noOfTokens; i++) {
-		printf("%d\n", tokens[i].type);
+	for(i = skip = 0; i < noOfTokens; i+=1+skip, skip = 0) {
+		auto [_skip, _node] = makeNode(tokens, i);
+		if(_skip != _node != 0) {
+			this->nodes.push_back(_node);
+			skip = _skip;
+		}
 	}
 }
