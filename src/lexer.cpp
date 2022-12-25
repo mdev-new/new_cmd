@@ -5,6 +5,18 @@
 #include <utility>
 #include "interpreter.hh"
 
+static char *strndup(const char *str, size_t chars) {
+	int n;
+
+	char *buffer = (char *) malloc(chars +1);
+	if (buffer) {
+		for (n = 0; ((n < chars) && (str[n] != 0)) ; n++) buffer[n] = str[n];
+		buffer[n] = 0;
+	}
+
+	return buffer;
+}
+
 Lexer::Lexer(uint8_t *buffer, size_t size)
  : buffer(buffer),
    length(size),
@@ -31,6 +43,7 @@ Token Lexer::get() {
 	case '|': idx++; return (Token){TOK_PIPE, 0, 0};
 	case '%': idx++; return (Token){TOK_PERCENT, 0, 0};
 	case '~': idx++; return (Token){TOK_TILDE, 0, 0};
+	case '&': idx++; return (Token){TOK_AND, 0, 0};
 	case '\'':
 	case '"': {
 		char x = buffer[idx++];
@@ -38,6 +51,7 @@ Token Lexer::get() {
 		while(buffer[idx++] != x);
 		return (Token){TOK_STRING, strndup(&buffer[orig_idx], idx-1-orig_idx), idx-1-orig_idx};
 	}
+	case '\n': idx++; return (Token){TOK_SPACE, 0, 0};
 	default: break;
 	}
 
@@ -68,18 +82,14 @@ Token Lexer::get() {
 	return (Token){TOK_INVAL, -1, -1};
 }
 
-std::pair<size_t, Token *> Lexer::lexBuffer() {
-	int created = 0, treshold = 128;
-	Token *tokenbuf = malloc(treshold*sizeof(Token));
-
-	int i = 0;
+std::vector<Token> Lexer::lexBuffer() {
+	std::vector<Token> list;
 
 	while(!eof()) {
-		if(created >= treshold) tokenbuf = realloc(tokenbuf, (treshold += 128)*sizeof(Token));
 		auto token = get();
-		if(token.type != TOK_INVAL) tokenbuf[created++] = token;
+		if(token.type != TOK_INVAL) list.push_back(token);
 	}
-
-	tokenbuf = realloc(tokenbuf, created*sizeof(Token));
-	return std::make_pair(created, tokenbuf);
+	
+	list.push_back((Token){TOK_EOF, 0, 0});
+	return list;
 }

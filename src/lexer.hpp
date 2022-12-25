@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <cstddef>
 #include <utility>
+#include <list>
+#include <vector>
 
 enum TokenType {
 	TOK_INVAL = 0,
@@ -30,12 +32,14 @@ enum TokenType {
 	TOK_PIPE,
 	TOK_PERCENT,
 	TOK_TILDE,
+	TOK_AND,
 
 	TOK_BUILTIN,
 	TOK_FOR,
 	TOK_DO,
 	TOK_IF,
 	TOK_ELSE,
+	TOK_IN,
 };
 
 struct Token {
@@ -47,24 +51,16 @@ struct Token {
 class Lexer {
 	uint8_t *buffer;
 	size_t length;
-
 	size_t idx = 0;
 
 public:
 	Lexer(uint8_t *buffer, size_t size);
 	Token get();
-	std::pair<size_t, Token *> lexBuffer();
+	std::vector<Token> lexBuffer();
 
 	bool eof() { return length == 0 || idx >= length || buffer[idx] == 0; }
-	bool isdigit(char c) {
-		return (c >= '0' && c <= '9');
-	}
-
-	bool validIdStart(char c) {
-		return ((buffer[idx] >= 'A' && buffer[idx] <= 'Z') || (buffer[idx] >= 'a' && buffer[idx] <= 'z') || buffer[idx] == '_');
-	}
-	
-	bool validIdBody(char c) {
-		return validIdStart(buffer[idx]) || isdigit(buffer[idx]);
-	}
+	bool isdigit(char c) { return '0' <= c && c <= '9'; }
+	bool isalpha(char c) { return 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z'; }
+	bool validIdStart(char c) { return (isalpha(c) || c == '_'); }
+	bool validIdBody(char c) { return validIdStart(c) || isdigit(c); }
 };

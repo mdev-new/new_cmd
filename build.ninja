@@ -1,10 +1,11 @@
-#cflags=-Og -ggdb -fsanitize=address
+cflags=-Og -ggdb3 -fsanitize=address -static-libgcc -static-libstdc++
 
-cflags=-Ofast -flto -msse -msse2 -msse4.2 -mavx -mavx2 -mmmx -funsafe-math-optimizations -ftree-vectorize -ffast-math -ftree-slp-vectorize -fassociative-math -fvisibility=hidden -fcompare-debug-second -fno-stack-protector -fno-math-errno -fno-ident -fno-asynchronous-unwind-tables -Wl,-s,--gc-sections,--reduce-memory-overheads,--build-id=none -DNDEBUG
-shutup=-std=gnu++17 -fpermissive -Wno-narrowing -Wno-unused-result -Wno-format
+#cflags=-Ofast -flto -msse -msse2 -msse4.2 -mavx -mavx2 -mmmx -funsafe-math-optimizations -ftree-vectorize -ffast-math -ftree-slp-vectorize -fassociative-math -fvisibility=hidden -fcompare-debug-second -fno-stack-protector -fno-math-errno -fno-ident -fno-asynchronous-unwind-tables -Wl,-s,--gc-sections,--reduce-memory-overheads,--build-id=none -DNDEBUG
+shutup=-w -std=gnu++17 -fpermissive -Wno-narrowing -Wno-unused-result -Wno-format
 
 rule cpp
-  command = g++ -MD -MF $out.depends -o $out -c $in $cflags $shutup
+#  command = ccache distcc g++ -MD -MF $out.depends $cflags $shutup -o $out -c $in
+  command = ccache g++ -MD -MF $out.depends $cflags $shutup -o $out -c $in
   depfile = $out.depends
   description = cpp $out
 

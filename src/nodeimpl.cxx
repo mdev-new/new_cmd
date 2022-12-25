@@ -3,11 +3,22 @@
 
 // like interpreter, this file HAS to be optimized aswell
 
+char *itoa_(int i) {
+	static char b[21] = {0};
+	char *c=b+20;
+	int x=abs(i);
+	do  *--c = 48 + x % 10;
+	while(x && (x/=10));
+	if(i<0) *--c = 45;
+	return c;
+}
+
 int evalExpr(Node *root) {
 	switch(root->type) {
-	case MKNTYP(NODE_LEAF, LNODE_NUMBER): return ((NumberNode*)root)->evaluate();
-	case MKNTYP(NODE_INNER, INODE_PARENTHESES): return ((ParenthesesNode*)root)->evaluate();
-	case MKNTYP(NODE_INNER, INODE_BINOP): return ((NumberNode*)((BinOpNode*)root)->evaluate())->evaluate();
+	case MKNTYP(NODE_LEAF, LNODE_NUMBER) & BARETYPE: return ((NumberNode*)root)->evaluate();
+	case MKNTYP(NODE_INNER, INODE_PARENTHESES) & BARETYPE: return ((ParenthesesNode*)root)->evaluate();
+	case MKNTYP(NODE_INNER, INODE_BINOP) & BARETYPE: return ((NumberNode*)((BinOpNode*)root)->evaluate())->evaluate();
+	//default: return -1;
 	}
 }
 
@@ -15,10 +26,11 @@ int evalExpr(Node *root) {
 
 NumberNode::NumberNode(int n) {
 	this->num = n;
+	this->type = MKNTYP(NODE_LEAF, LNODE_NUMBER);
 }
 
 int NumberNode::evaluate() { return num; }
-
+std::pair<const char *, const char *> NumberNode::stringify() { return std::make_pair("NumberNode", itoa_(this->num)); };
 
 /* === StringNode === */
 
@@ -28,6 +40,7 @@ StringNode::StringNode(const char *s) {
 }
 
 const char *StringNode::evaluate() { return str; }
+std::pair<const char *, const char *> StringNode::stringify() { return std::make_pair("StringNode", this->str); };
 
 
 /* === ParenthesesNode === */
@@ -35,7 +48,7 @@ const char *StringNode::evaluate() { return str; }
 ParenthesesNode::ParenthesesNode() {
 	this->children = malloc(threshold*sizeof(Node*));
 	this->childrenCount = 0;
-	this->type = MKNTYP(NODE_INNER, INODE_PARENTHESES);
+	this->type = MKNTYP(NODE_INNER, INODE_PARENTHESES) | WITHCHILDREN;
 }
 
 void ParenthesesNode::append(Node *n) {
@@ -46,13 +59,13 @@ void ParenthesesNode::append(Node *n) {
 }
 
 int ParenthesesNode::evaluate() {
-	// todo implement the algorithm using skip things etc
-	// MUST BE OPTIMIZED
+	// we'll probably be evaluating commands here aswell
 
 	printf("!!! UNIMPLEMENTED !!!: %s", __PRETTY_FUNCTION__);
-	
+
 	return -1;
 }
+std::pair<const char *, const char *> ParenthesesNode::stringify() { return std::make_pair("ParenthesesNode", nullptr); };
 
 
 /* === BinOpNode === */
@@ -69,6 +82,7 @@ BinOpNode::BinOpNode(Node *lhs, Node *rhs) {
 int AdditionNode::evaluate() {
 	return evalExpr(lhs) + evalExpr(rhs);
 }
+std::pair<const char *, const char *> AdditionNode::stringify() { return std::make_pair("AdditionNode", nullptr); };
 
 
 /* === SubtractionNode === */
@@ -76,6 +90,7 @@ int AdditionNode::evaluate() {
 int SubtractionNode::evaluate() {
 	return evalExpr(lhs) - evalExpr(rhs);
 }
+std::pair<const char *, const char *> SubtractionNode::stringify() { return std::make_pair("SubtractionNode", nullptr); };
 
 
 /* === MultiplicationNode === */
@@ -83,24 +98,79 @@ int SubtractionNode::evaluate() {
 int MultiplicationNode::evaluate() {
 	return evalExpr(lhs) * evalExpr(rhs);
 }
+std::pair<const char *, const char *> MultiplicationNode::stringify() { return std::make_pair("MultiplicationNode", nullptr); };
 
 
-/* === DivisionNode */
+/* === DivisionNode === */
 
 int DivisionNode::evaluate() {
 	return evalExpr(lhs) / evalExpr(rhs);
 }
+std::pair<const char *, const char *> DivisionNode::stringify() { return std::make_pair("DivisionNode", nullptr); };
 
 
 /* === EnvVarNode === */
 
-EnvVarNode::EnvVarNode(const char *name) : name(name) {}
+EnvVarNode::EnvVarNode(char *name) : name(name) {
+	this->type = MKNTYP(NODE_LEAF, LNODE_ENVVAR);
+}
 
 void EnvVarNode::init() {
 	value = getenv(name);
 }
 
-const char *EnvVarNode::evaluate(bool delayedExpansion) {
+char *EnvVarNode::evaluate(bool delayedExpansion) {
 	if(!delayedExpansion) return value;
-	return value = getenv(name);
+	return getenv(name);
 }
+std::pair<const char *, const char *> EnvVarNode::stringify() { return std::make_pair("EnvVarNode", nullptr); };
+
+
+/* === CallNode === */
+CallNode::CallNode(char *name, std::vector<Node*> args)
+: funcName(name),
+  args(args)
+{
+	this->type = MKNTYP(NODE_LEAF, LNODE_CALL);
+}
+
+int CallNode::execute() {
+	size_t hashed = hash(this->funcName);
+
+	if(multicharMapping.count(hashed) > 0) {
+		CallPtr funcPtr = multicharMapping.at(hashed).second;
+		if(funcPtr != nullptr) {
+			funcPtr((CallParams){args.data(), args.size()});
+		}
+	} else {
+		// todo find the executable
+		// and execute with stringified params
+	}
+}
+std::pair<const char *, const char *> CallNode::stringify() { return std::make_pair("CallNode", nullptr); };
+
+
+/* === EqualsNode === */
+AssignNode::AssignNode(Node *lhs, Node *rhs) {
+	this->_1x1.lhs = lhs;
+	this->_1x1.rhs = rhs;
+	this->type = MKNTYP(NODE_INNER, INODE_ASSIGN);
+}
+
+AssignNode::AssignNode(Node **lhs, int lhsCount, Node *rhs) {
+	this->_Xx1.lhs = lhs;
+	this->_Xx1.rhs = rhs;
+	this->_Xx1.lhsCount = lhsCount;
+	this->type = MKNTYP(NODE_INNER, INODE_ASSIGN) | WITHCHILDREN;
+}
+std::pair<const char *, const char *> AssignNode::stringify() { return std::make_pair("AssignNode", nullptr); };
+
+
+/* === LabelNode === */
+
+LabelNode::LabelNode(int pos)
+ : filePos(pos)
+{
+	this->type = MKNTYP(NODE_LEAF, LNODE_LABEL);
+}
+std::pair<const char *, const char *> LabelNode::stringify() { return std::make_pair("LabelNode", nullptr); };

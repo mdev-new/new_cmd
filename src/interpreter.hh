@@ -2,27 +2,15 @@
 #include <unordered_map>
 #include <utility>
 #include "lexer.hpp"
+#include "parser_interpreter_shared.hh"
 #include "parser.hpp"
 
-[[gnu::noinline]] constexpr uint64_t hash(const char *text) {
-	uint64_t h = 525201411107845655ull, i = 0;
-	while (text[i++]) {
-		h = (h ^ text[i]) * 0x5bd1e9955bd1e995;
-		h ^= h >> 47;
-	}
-	return h;
-}
+class Interpreter {
+	Parser parser;
 
-// lets do little bit of trolling
-// to avoid double hashing
-struct Hasher {
-	size_t operator()(const size_t &h) const {
-		return h;
-	}
-};
+public:
+	Interpreter(char *buffer, size_t size);
+	int interpret();
 
-struct CallParams {
-	Node *params;
+	std::vector<Node*> &nodes = parser.nodes;
 };
-using CallPtr = int(*)(CallParams &callParams);
-extern volatile std::unordered_map<size_t, std::pair<uint16_t, CallPtr>, Hasher> multicharMapping;
