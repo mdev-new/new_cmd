@@ -7,7 +7,7 @@
 #include "parser_interpreter_shared.hh"
 
 #define MKNTYP(NT,ST) (NT | (ST << 1))
-#define WITHCHILDREN (1 << 16)
+#define WITHCHILDREN (1 << 15)
 #define BARETYPE (0xFF)
 
 // TODO EXPRESSION TREE
@@ -34,7 +34,7 @@ enum LeafNodeType {
 
 struct Node {
 	uint16_t type; // zzzzzzzzyyyyyyyx => x = NodeType, y = InnerNodeType/LeafNodeType, z = node specific data
-	virtual std::pair<const char *, const char *> stringify() = 0;
+	virtual std::pair<const char *, char *> stringify() = 0;
 };
 
 // implemented in nodeimpl.cxx
@@ -42,7 +42,7 @@ int evalExpr(Node *root);
 
 struct LeafNode : public Node {
 	union {
-		const char *str;
+		char *str;
 		int num;
 	};
 };
@@ -57,22 +57,22 @@ struct InnerNode : public Node {
 struct NumberNode final : public LeafNode {
 	NumberNode(int n);
 	int evaluate();
-	std::pair<const char *, const char *> stringify() override;
+	std::pair<const char *, char *> stringify() override;
 };
 
 struct StringNode final : public LeafNode {
 	StringNode(const char *s);
 	const char *evaluate();
-	std::pair<const char *, const char *> stringify() override;
+	std::pair<const char *, char *> stringify() override;
 };
 
 struct ParenthesesNode : public InnerNode {
 	int threshold = 16;
 
-	ParenthesesNode();
+	explicit ParenthesesNode();
 	void append(Node *n);
 	int evaluate();
-	std::pair<const char *, const char *> stringify() override;
+	std::pair<const char *, char *> stringify() override;
 };
 
 struct BinOpNode : public InnerNode {
@@ -83,25 +83,25 @@ struct BinOpNode : public InnerNode {
 struct AdditionNode final : public BinOpNode {
 	using BinOpNode::BinOpNode;
 	int evaluate() override;
-	std::pair<const char *, const char *> stringify() override;
+	std::pair<const char *, char *> stringify() override;
 };
 
 struct SubtractionNode final : public BinOpNode {
 	using BinOpNode::BinOpNode;
 	int evaluate() override;
-	std::pair<const char *, const char *> stringify() override;
+	std::pair<const char *, char *> stringify() override;
 };
 
 struct MultiplicationNode final : public BinOpNode {
 	using BinOpNode::BinOpNode;
 	int evaluate() override;
-	std::pair<const char *, const char *> stringify() override;
+	std::pair<const char *, char *> stringify() override;
 };
 
 struct DivisionNode final : public BinOpNode {
 	using BinOpNode::BinOpNode;
 	int evaluate() override;
-	std::pair<const char *, const char *> stringify() override;
+	std::pair<const char *, char *> stringify() override;
 };
 
 struct EnvVarNode final : public Node {
@@ -110,7 +110,7 @@ struct EnvVarNode final : public Node {
 	EnvVarNode(char *name);
 	void init();
 	char *evaluate(bool delayedExpansion);
-	std::pair<const char *, const char *> stringify() override;
+	std::pair<const char *, char *> stringify() override;
 };
 
 // i have no idea how to implement this.
@@ -120,7 +120,7 @@ struct CallNode final : public Node {
 
 	CallNode(char *name, std::vector<Node*> args);
 	int execute();
-	std::pair<const char *, const char *> stringify() override;
+	std::pair<const char *, char *> stringify() override;
 };
 
 struct AssignNode final : public Node {
@@ -131,13 +131,13 @@ struct AssignNode final : public Node {
 
 	AssignNode(Node *lhs, Node *rhs);
 	AssignNode(Node **lhs, int lhsCount, Node *rhs);
-	std::pair<const char *, const char *> stringify() override;
+	std::pair<const char *, char *> stringify() override;
 };
 
 struct LabelNode final : public Node {
 	int filePos;
 	LabelNode(int pos);
-	std::pair<const char *, const char *> stringify() override;
+	std::pair<const char *, char *> stringify() override;
 };
 
 class Parser {

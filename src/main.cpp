@@ -23,20 +23,21 @@
 #include "interpreter.hh"
 
 void prettyPrint(int level, Node *n) {
-	printf("TYPE: %d\n", n->type);
-	for(int l = 0; l < level*2; l++) printf(" ");
+	//printf("TYPE: %d\n", n->type);
+	for(int l = 0; l < 2*level; l++) printf(" ");
+	auto [_1, _2] = n->stringify();
 	if(n->type & 1) { // inner
 		InnerNode *nn = n;
 		if(nn->type & WITHCHILDREN) {
-			printf("Inner: %s\n", nn->stringify().first);
+			printf("%s %s\n", _1, _2);
 			for (int x = 0; x < nn->childrenCount; x++) prettyPrint(level+1, nn->children[x]);
 		} else {
-			printf("Inner: %s\n", nn->stringify().first);
+			printf("%s %s\n", _1, _2);
 			prettyPrint(level+1, nn->lhs);
 			prettyPrint(level+1, nn->rhs);
 		}
 	} else { // leaf
-		printf("Leaf: %s\n", n->stringify().first);
+		printf("%s %s\n", _1, _2);
 		if(n->type == (MKNTYP(NODE_LEAF, LNODE_CALL) & BARETYPE)) {
 			CallNode *cln = n;
 			for(int p = 0; p < cln->args.size(); p++) prettyPrint(level+1, cln->args[p]);

@@ -72,9 +72,8 @@ Token Lexer::get() {
 		char *identifier = strndup(buffer+idstart, idx - idstart);
 
 		if(multicharMapping.count(hash(identifier)) > 0) {
-			auto [_token, _value] = multicharMapping.at(hash(identifier));
-			free(identifier);
-			return (Token){_token, _value, 0};
+			auto _token = multicharMapping.at(hash(identifier)).first;
+			return (Token){_token, identifier, 0};
 		} else return (Token){TOK_ID, identifier, idx - idstart};
 	}
 

@@ -79,10 +79,12 @@ std::pair<int, Node*> makeNode(std::vector<Token> tokens, int i) {
 	}
 
 	case TOK_LEFTPAREN: {
-		int j;
+		int j, skip = 1;
 		ParenthesesNode *n = new ParenthesesNode();
-		for(j = i+1; tokens[j].type != TOK_RIGHTPAREN; j++) {
-			n->append(makeNode(tokens, j).second);
+		for(j = i+1; tokens[j].type != TOK_RIGHTPAREN; j+=skip, skip=1) {
+			auto [ss, nn] = makeNode(tokens, j);
+			n->append(nn);
+			skip = ss;
 		}
 
 		return std::make_pair(j-i+1, n);

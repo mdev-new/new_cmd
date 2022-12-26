@@ -30,7 +30,7 @@ NumberNode::NumberNode(int n) {
 }
 
 int NumberNode::evaluate() { return num; }
-std::pair<const char *, const char *> NumberNode::stringify() { return std::make_pair("NumberNode", itoa_(this->num)); };
+std::pair<const char *, char *> NumberNode::stringify() { return std::make_pair("NumberNode", itoa_(this->num)); };
 
 /* === StringNode === */
 
@@ -40,7 +40,7 @@ StringNode::StringNode(const char *s) {
 }
 
 const char *StringNode::evaluate() { return str; }
-std::pair<const char *, const char *> StringNode::stringify() { return std::make_pair("StringNode", this->str); };
+std::pair<const char *, char *> StringNode::stringify() { return std::make_pair("StringNode", this->str); };
 
 
 /* === ParenthesesNode === */
@@ -65,7 +65,7 @@ int ParenthesesNode::evaluate() {
 
 	return -1;
 }
-std::pair<const char *, const char *> ParenthesesNode::stringify() { return std::make_pair("ParenthesesNode", nullptr); };
+std::pair<const char *, char *> ParenthesesNode::stringify() { return std::make_pair("ParenthesesNode", nullptr); };
 
 
 /* === BinOpNode === */
@@ -82,7 +82,7 @@ BinOpNode::BinOpNode(Node *lhs, Node *rhs) {
 int AdditionNode::evaluate() {
 	return evalExpr(lhs) + evalExpr(rhs);
 }
-std::pair<const char *, const char *> AdditionNode::stringify() { return std::make_pair("AdditionNode", nullptr); };
+std::pair<const char *, char *> AdditionNode::stringify() { return std::make_pair("AdditionNode", nullptr); };
 
 
 /* === SubtractionNode === */
@@ -90,7 +90,7 @@ std::pair<const char *, const char *> AdditionNode::stringify() { return std::ma
 int SubtractionNode::evaluate() {
 	return evalExpr(lhs) - evalExpr(rhs);
 }
-std::pair<const char *, const char *> SubtractionNode::stringify() { return std::make_pair("SubtractionNode", nullptr); };
+std::pair<const char *, char *> SubtractionNode::stringify() { return std::make_pair("SubtractionNode", nullptr); };
 
 
 /* === MultiplicationNode === */
@@ -98,7 +98,7 @@ std::pair<const char *, const char *> SubtractionNode::stringify() { return std:
 int MultiplicationNode::evaluate() {
 	return evalExpr(lhs) * evalExpr(rhs);
 }
-std::pair<const char *, const char *> MultiplicationNode::stringify() { return std::make_pair("MultiplicationNode", nullptr); };
+std::pair<const char *, char *> MultiplicationNode::stringify() { return std::make_pair("MultiplicationNode", nullptr); };
 
 
 /* === DivisionNode === */
@@ -106,7 +106,7 @@ std::pair<const char *, const char *> MultiplicationNode::stringify() { return s
 int DivisionNode::evaluate() {
 	return evalExpr(lhs) / evalExpr(rhs);
 }
-std::pair<const char *, const char *> DivisionNode::stringify() { return std::make_pair("DivisionNode", nullptr); };
+std::pair<const char *, char *> DivisionNode::stringify() { return std::make_pair("DivisionNode", nullptr); };
 
 
 /* === EnvVarNode === */
@@ -123,13 +123,13 @@ char *EnvVarNode::evaluate(bool delayedExpansion) {
 	if(!delayedExpansion) return value;
 	return getenv(name);
 }
-std::pair<const char *, const char *> EnvVarNode::stringify() { return std::make_pair("EnvVarNode", nullptr); };
+std::pair<const char *, char *> EnvVarNode::stringify() { return std::make_pair("EnvVarNode", nullptr); };
 
 
 /* === CallNode === */
 CallNode::CallNode(char *name, std::vector<Node*> args)
-: funcName(name),
-  args(args)
+:  args(args),
+ funcName(name)
 {
 	this->type = MKNTYP(NODE_LEAF, LNODE_CALL);
 }
@@ -147,7 +147,7 @@ int CallNode::execute() {
 		// and execute with stringified params
 	}
 }
-std::pair<const char *, const char *> CallNode::stringify() { return std::make_pair("CallNode", nullptr); };
+std::pair<const char *, char *> CallNode::stringify() { return std::make_pair("CallNode", this->funcName); };
 
 
 /* === EqualsNode === */
@@ -163,7 +163,7 @@ AssignNode::AssignNode(Node **lhs, int lhsCount, Node *rhs) {
 	this->_Xx1.lhsCount = lhsCount;
 	this->type = MKNTYP(NODE_INNER, INODE_ASSIGN) | WITHCHILDREN;
 }
-std::pair<const char *, const char *> AssignNode::stringify() { return std::make_pair("AssignNode", nullptr); };
+std::pair<const char *, char *> AssignNode::stringify() { return std::make_pair("AssignNode", nullptr); };
 
 
 /* === LabelNode === */
@@ -173,4 +173,4 @@ LabelNode::LabelNode(int pos)
 {
 	this->type = MKNTYP(NODE_LEAF, LNODE_LABEL);
 }
-std::pair<const char *, const char *> LabelNode::stringify() { return std::make_pair("LabelNode", nullptr); };
+std::pair<const char *, char *> LabelNode::stringify() { return std::make_pair("LabelNode", nullptr); };
