@@ -19,6 +19,7 @@
 #include <cstdio>
 #include <cstdlib>
 
+#include "win.hh"
 #include "parser.hpp"
 #include "interpreter.hh"
 

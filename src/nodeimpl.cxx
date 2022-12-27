@@ -1,5 +1,7 @@
 #pragma once
 #include "parser.hpp"
+#include <cstdlib>
+#include <cstdio>
 
 // like interpreter, this file HAS to be optimized aswell
 

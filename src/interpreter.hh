@@ -2,7 +2,7 @@
 #include <unordered_map>
 #include <utility>
 #include "lexer.hpp"
-#include "parser_interpreter_shared.hh"
+#include "extension_api.hh"
 #include "parser.hpp"
 
 class Interpreter {
