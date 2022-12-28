@@ -9,6 +9,7 @@
 #define WITHCHILDREN (1 << 15)
 #define BARETYPE (0xFF)
 
+extern volatile std::unordered_map<size_t, std::pair<uint16_t, CallPtr>, Hasher> multicharMapping;
 // TODO EXPRESSION TREE
 
 // I hate that this has to be here but whatever

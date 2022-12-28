@@ -72,7 +72,7 @@ struct NumberNode final : public LeafNode {
 };
 
 struct StringNode final : public LeafNode {
-	StringNode(const char *s);
+	StringNode(char *s);
 	const char *evaluate();
 	std::pair<const char *, char *> stringify() override;
 };
@@ -127,7 +127,7 @@ struct EnvVarNode final : public Node {
 // i have no idea how to implement this.
 struct CallNode final : public Node {
 	char *funcName;
-	std::vector<Node *>args;
+	std::vector<Node *> args;
 
 	CallNode(char *name, std::vector<Node*> args);
 	int execute();
@@ -156,4 +156,6 @@ struct CallParams {
 	int paramLen;
 };
 using CallPtr = int(*)(CallParams callParams);
-extern volatile std::unordered_map<size_t, std::pair<uint16_t, CallPtr>, Hasher> multicharMapping;
+
+// mapping of strings to tokens & functions:
+// volatile std::unordered_map<size_t, std::pair<uint16_t, CallPtr>, Hasher> multicharMapping;

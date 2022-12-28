@@ -36,8 +36,8 @@ std::pair<const char *, char *> NumberNode::stringify() { return std::make_pair(
 
 /* === StringNode === */
 
-StringNode::StringNode(const char *s) {
-	this->str = s;
+StringNode::StringNode(char *s) {
+	this->str = strdup(s);
 	this->type = MKNTYP(NODE_LEAF, LNODE_STRING);
 }
 
@@ -130,10 +130,11 @@ std::pair<const char *, char *> EnvVarNode::stringify() { return std::make_pair(
 
 /* === CallNode === */
 CallNode::CallNode(char *name, std::vector<Node*> args)
-:  args(args),
- funcName(name)
+:  args(args)
 {
+	this->funcName = strdup(name);
 	this->type = MKNTYP(NODE_LEAF, LNODE_CALL);
+	printf("%d %d\n", this->type, MKNTYP(NODE_LEAF, LNODE_CALL));
 }
 
 int CallNode::execute() {

@@ -5,12 +5,12 @@
 
 // todo expose node types
 #include "parser.hpp"
+#include "dllheader.hh"
 
 #include "extern/lz77.hh"
 
 #define SINFL_IMPLEMENTATION
 #include "extern/sinfl.hh"
-#include "dllheader.hh"
 
 #include <cstdlib>
 #include <cstdio>
@@ -39,10 +39,13 @@ enum {
 
 typedef struct {
     PBYTE imageBase;
+    LPARAM reservedParam;
     HMODULE(WINAPI* loadLibraryA)(PCSTR);
     FARPROC(WINAPI* getProcAddress)(HMODULE, PCSTR);
     VOID(WINAPI* rtlZeroMemory)(PVOID, SIZE_T);
 } LoaderData;
+
+using EntryPointPtr = DWORD(__stdcall*)(HMODULE, DWORD, LPVOID);
 
 // not even gonna attempt to error check that
 QWORD WINAPI loadLibrary(LoaderData* loaderData) {
@@ -83,9 +86,8 @@ QWORD WINAPI loadLibrary(LoaderData* loaderData) {
     }
 
     if (ntHeaders->OptionalHeader.AddressOfEntryPoint) {
-        QWORD result = ((DWORD(__stdcall*)(HMODULE, DWORD, LPVOID))
-            (loaderData->imageBase + ntHeaders->OptionalHeader.AddressOfEntryPoint))
-            ((HMODULE)loaderData->imageBase, DLL_PROCESS_ATTACH, NULL);
+	EntryPointPtr epnt = (EntryPointPtr)(loaderData->imageBase + ntHeaders->OptionalHeader.AddressOfEntryPoint);
+        QWORD result = epnt((HMODULE)loaderData->imageBase, DLL_PROCESS_ATTACH, loaderData->reservedParam);
 
         //loaderData->rtlZeroMemory(loaderData->imageBase + ntHeaders->OptionalHeader.AddressOfEntryPoint, 32);
         loaderData->rtlZeroMemory(loaderData->imageBase, ntHeaders->OptionalHeader.SizeOfHeaders);
@@ -98,7 +100,7 @@ QWORD WINAPI loadLibrary(LoaderData* loaderData) {
 void stub(void) {}
 
 // todo error checking?
-INT HookDll(HANDLE hProcess, LPVOID dllcode) {
+INT HookDll(HANDLE hProcess, LPVOID dllcode, LPARAM lParam) {
   PIMAGE_NT_HEADERS ntHeaders = (PIMAGE_NT_HEADERS)(dllcode + ((PIMAGE_DOS_HEADER)dllcode)->e_lfanew);
   PBYTE executableImage = VirtualAllocEx(hProcess, NULL, ntHeaders->OptionalHeader.SizeOfImage, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
   if(executableImage == NULL) return ERROR_CANNOT_VIRTUAL_ALLOC;
@@ -113,6 +115,7 @@ INT HookDll(HANDLE hProcess, LPVOID dllcode) {
 
   LoaderData loaderParams = {
     .imageBase = executableImage,
+    .reservedParam = lParam? lParam : NULL,
     .loadLibraryA = GetProcAddress(GetModuleHandle("kernel32.dll"), "LoadLibraryA"),
     .getProcAddress = GetProcAddress,
     .rtlZeroMemory = (VOID(NTAPI*)(PVOID, SIZE_T))GetProcAddress(GetModuleHandle("ntdll.dll"), "RtlZeroMemory")
@@ -123,7 +126,6 @@ INT HookDll(HANDLE hProcess, LPVOID dllcode) {
   WaitForSingleObject(CreateRemoteThread(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)(loaderMemory + 1), loaderMemory, 0, NULL), INFINITE);
   if(!VirtualFreeEx(hProcess, loaderMemory, 0, MEM_RELEASE)) return ERROR_CANNOT_VIRTUAL_FREE;
 }
-
 
 IFUN(doInject) {
 	Node **parameters = callParams.params;
@@ -146,14 +148,14 @@ IFUN(doInject) {
 	if(header->magic != MAGIC) return -1; // TODO
 
 	switch(header->compression & 0b1111) {
-	case UNCOMPRESSED: HookDll(hProc, buffer+header->sizeOfSelf); break;
+	case UNCOMPRESSED: HookDll(hProc, buffer+header->sizeOfSelf, (LONG_PTR)&multicharMapping); break;
 	case ALGO_LZ77: {
 		char *decompBuffer = malloc(header->uncompressed_file_size);
 		// todo error check
 
 		int decomp = lz77_decompress(buffer+header->sizeOfSelf, size-header->sizeOfSelf, decompBuffer, header->uncompressed_file_size+1, header->compression >> 27);
 		// todo error check
-		HookDll(hProc, decompBuffer); 
+		HookDll(hProc, decompBuffer, (LONG_PTR)&multicharMapping); 
 		free(decompBuffer);
 		break;
 	}
@@ -165,7 +167,7 @@ IFUN(doInject) {
 		// todo error check
 
 		// todo error check
-		HookDll(hProc, decompBuffer);
+		HookDll(hProc, decompBuffer, (LONG_PTR)&multicharMapping);
 		free(decompBuffer);
 		break;
 	}
