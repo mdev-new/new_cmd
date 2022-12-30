@@ -19,12 +19,14 @@
 #include <cstdio>
 #include <cstdlib>
 
+#include "win.hh"
 #include "parser.hpp"
 #include "interpreter.hh"
 
 void prettyPrint(int level, Node *n) {
 	//printf("TYPE: %d\n", n->type);
 	for(int l = 0; l < 2*level; l++) printf(" ");
+	printf("%d\n", n->type);
 	auto [_1, _2] = n->stringify();
 	if(n->type & 1) { // inner
 		InnerNode *nn = n;
@@ -38,7 +40,7 @@ void prettyPrint(int level, Node *n) {
 		}
 	} else { // leaf
 		printf("%s %s\n", _1, _2);
-		if(n->type == (MKNTYP(NODE_LEAF, LNODE_CALL) & BARETYPE)) {
+		if((n->type & BARETYPE) == (MKNTYP(NODE_LEAF, LNODE_CALL) & BARETYPE)) {
 			CallNode *cln = n;
 			for(int p = 0; p < cln->args.size(); p++) prettyPrint(level+1, cln->args[p]);
 		}
@@ -57,12 +59,17 @@ int main(int argc, char *argv[]) {
 
 	char *buffer = malloc(size+1);
 	fread(buffer, size, 1, f);
+	buffer[size] = 0;
 
 	Interpreter intp(buffer, size);
 	int retncode = intp.interpret();
 
+	//printf("%s\n", TCAST(StringNode *, TCAST(CallNode*, intp.nodes[0])->args[0])->str);
+
 	for(Node *n : intp.nodes) {
-		prettyPrint(0, n);
+	//if(n->type == MKNTYP(NODE_LEAF, LNODE_CALL)) printf("ok\n");
+	//	prettyPrint(0, n);
+	//printf("%d %d\n", n->type, MKNTYP(NODE_LEAF, LNODE_CALL));
 	}
 
 	free(buffer);

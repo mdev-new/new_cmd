@@ -43,7 +43,7 @@ enum TokenType {
 };
 
 struct Token {
-	TokenType type;
+	short type;
 	uint64_t value;
 	uint64_t additionalData;
 };

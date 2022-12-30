@@ -102,6 +102,7 @@ std::pair<int, Node*> makeNode(std::vector<Token> tokens, int i) {
 
 	case TOK_STRING: // they're similar enough
 	case TOK_ID: {
+		//printf("emit string: %s\n", (char *)tokens[i].value);
 		return std::make_pair(1, new StringNode((char*)tokens[i].value));
 	}
 
@@ -112,12 +113,14 @@ std::pair<int, Node*> makeNode(std::vector<Token> tokens, int i) {
 
 		for(; command_terminators.count(tokens[_i].type) == 0 && _i < tokens.size(); _i+=skip, skip = 1) {
 			auto [skp, nod] = makeNode(tokens, _i);
-			if(nod != nullptr) args.push_back(nod);
+			if(nod != nullptr) {
+				args.push_back(nod);
+				skip = skp;
+			}
 			else delete nod;
-			skip = skp;
 		}
 
-		return std::make_pair(_i-i+1, new CallNode((char*)tokens[i].value, args));
+		return std::make_pair(_i-i, new CallNode((char*)tokens[i].value, args));
 	}
 
 	default: return std::make_pair(1, nullptr);

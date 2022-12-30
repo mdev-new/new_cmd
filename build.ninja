@@ -1,11 +1,12 @@
-#cflags=-Og -ggdb3 -fsanitize=address -static-libgcc -static-libstdc++
+cflags=-Og -ggdb3
+# -fsanitize=address -static-libgcc -static-libstdc++
 
-cflags=-Ofast -flto -msse -msse2 -msse4.2 -mavx -mavx2 -mmmx -funsafe-math-optimizations -ftree-vectorize -ffast-math -ftree-slp-vectorize -fassociative-math -fvisibility=hidden -fcompare-debug-second -fno-stack-protector -fno-math-errno -fno-ident -fno-asynchronous-unwind-tables -Wl,-s,--gc-sections,--reduce-memory-overheads,--build-id=none -DNDEBUG
-shutup=-w -std=gnu++17 -fpermissive -Wno-narrowing -Wno-unused-result -Wno-format
+#cflags=-Ofast -flto -msse -msse2 -msse4.2 -mavx -mavx2 -mmmx -funsafe-math-optimizations -ftree-vectorize -ffast-math -ftree-slp-vectorize -fassociative-math -fvisibility=hidden -fcompare-debug-second -fno-stack-protector -fno-math-errno -fno-ident -fno-asynchronous-unwind-tables -Wl,-s,--gc-sections,--reduce-memory-overheads,--build-id=none -DNDEBUG
+shutup=-w -Isrc/extern -std=gnu++17 -fpermissive -Wno-narrowing -Wno-unused-result -Wno-format
 
 rule cpp
 #  command = ccache distcc g++ -MD -MF $out.depends $cflags $shutup -o $out -c $in
-  command = ccache g++ -MD -MF $out.depends $cflags $shutup -o $out -c $in
+  command = g++ -MD -MF $out.depends $cflags $shutup -o $out -c $in
   depfile = $out.depends
   description = cpp $out
 
@@ -18,4 +19,5 @@ build bin/lexer.o: cpp src/lexer.cpp
 build bin/parser.o: cpp src/parser.cpp
 build bin/interpreter.o: cpp src/interpreter.cc
 build bin/nodeimpl.o: cpp src/nodeimpl.cxx
-build a.out: link bin/lexer.o bin/parser.o bin/nodeimpl.o bin/interpreter.o bin/main.o
+build bin/extension_api.o: cpp src/extension_api.cc
+build a.exe: link bin/lexer.o bin/parser.o bin/nodeimpl.o bin/interpreter.o bin/extension_api.o bin/main.o

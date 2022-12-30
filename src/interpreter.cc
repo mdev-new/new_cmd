@@ -18,6 +18,10 @@ IFUN(doExit) {
 	return 0;
 }
 
+#ifdef _WIN64
+	extern IFUN(doInject);
+#endif
+
 volatile std::unordered_map<size_t, std::pair<uint16_t, CallPtr>, Hasher> multicharMapping = {
 	fe("for", TOK_FOR, nullptr)
 	fe("do", TOK_DO, nullptr)
@@ -26,6 +30,10 @@ volatile std::unordered_map<size_t, std::pair<uint16_t, CallPtr>, Hasher> multic
 	fe("in", TOK_IN, nullptr)
 	fe("set", TOK_BUILTIN, doSet)
 	fe("exit", TOK_BUILTIN, doExit)
+
+#ifdef _WIN64
+	fe("extend", TOK_BUILTIN, doInject)
+#endif
 };
 
 Interpreter::Interpreter(char *buffer, size_t size)
