@@ -23,23 +23,28 @@
 #include "parser.hpp"
 #include "interpreter.hh"
 
+void print_binary(unsigned int number) {
+    if (number >> 1) print_binary(number >> 1);
+    putc((number & 1) ? '1' : '0', stdout);
+}
+
 void prettyPrint(int level, Node *n) {
 	//printf("TYPE: %d\n", n->type);
 	for(int l = 0; l < 2*level; l++) printf(" ");
-	printf("%d\n", n->type);
+	//putc('(', stdout); print_binary(n->type); printf(") ");
 	auto [_1, _2] = n->stringify();
 	if(n->type & 1) { // inner
 		InnerNode *nn = n;
 		if(nn->type & WITHCHILDREN) {
-			printf("%s %s\n", _1, _2);
+			printf("%s |%s|\n", _1, _2);
 			for (int x = 0; x < nn->childrenCount; x++) prettyPrint(level+1, nn->children[x]);
 		} else {
-			printf("%s %s\n", _1, _2);
+			printf("%s |%s|\n", _1, _2);
 			prettyPrint(level+1, nn->lhs);
 			prettyPrint(level+1, nn->rhs);
 		}
 	} else { // leaf
-		printf("%s %s\n", _1, _2);
+		printf("%s |%s|\n", _1, _2);
 		if((n->type & BARETYPE) == (MKNTYP(NODE_LEAF, LNODE_CALL) & BARETYPE)) {
 			CallNode *cln = n;
 			for(int p = 0; p < cln->args.size(); p++) prettyPrint(level+1, cln->args[p]);
@@ -62,15 +67,12 @@ int main(int argc, char *argv[]) {
 	buffer[size] = 0;
 
 	Interpreter intp(buffer, size);
+
+	for(Node *n : intp.nodes) prettyPrint(0, n);
+
 	int retncode = intp.interpret();
 
-	//printf("%s\n", TCAST(StringNode *, TCAST(CallNode*, intp.nodes[0])->args[0])->str);
-
-	for(Node *n : intp.nodes) {
-	//if(n->type == MKNTYP(NODE_LEAF, LNODE_CALL)) printf("ok\n");
-	//	prettyPrint(0, n);
-	//printf("%d %d\n", n->type, MKNTYP(NODE_LEAF, LNODE_CALL));
-	}
+	printf("%%hello%% = %s\n", getenv("hello"));
 
 	free(buffer);
 	fclose(f);

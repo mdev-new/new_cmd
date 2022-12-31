@@ -86,9 +86,10 @@ std::vector<Token> Lexer::lexBuffer() {
 
 	while(!eof()) {
 		auto token = get();
-		if(token.type != TOK_INVAL) list.push_back(token);
+		if(token.type == TOK_INVAL) continue;
+		list.push_back(token);
 	}
-	
+
 	list.push_back((Token){TOK_EOF, 0, 0});
 	return list;
 }

@@ -1,1 +1,1 @@
-extend "hello.dll"
+set -a hello=1+2

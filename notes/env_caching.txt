@@ -1,0 +1,6 @@
+Env caching:
+
+1. on start dump environment into unordered_map
+2. every read & write will read from the unordered_map
+3. if we need to launch external command stringify the entire map and pass it onto the command
+ -> this will even work with cmd rewrite, so if launching background job we'll still have the cache

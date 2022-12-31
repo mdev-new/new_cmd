@@ -3,3 +3,4 @@ Todo
 [ ] parse commands and their delimiters (&&, ||, etc)
 [ ] builtins (if, else, for, do, set, ...)
 [ ] fix leaks
+[ ] "debug" / verbose mode - compile time config, log EVERYTHING (tokens, nodes, commands being interpreted, etc)

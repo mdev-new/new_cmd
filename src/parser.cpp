@@ -25,7 +25,7 @@ int SortTokens(std::vector<Token> &tokens, int start, int breaktok) {
 	Token current = tokens[start], last = current;
 	long i = start, skip = 0, parenStart = 0;
 
-	for(; breaktok? (current.type != breaktok) : (i < tokens.size()); i+=skip, skip=1) {
+	for(; breaktok? (current.type != breaktok && i < tokens.size()) : (i < tokens.size()); i+=skip, skip=1) {
 		current = tokens[i];
 
 		if(current.type == TOK_LEFTPAREN) {
@@ -44,7 +44,14 @@ int SortTokens(std::vector<Token> &tokens, int start, int breaktok) {
 			std::swap(tokens[i], tokens[i-1]);
 		}
 
+		// todo reduce multiple consecutive slashes
+		// todo move rhs to the front (incase thi happens =xyz0, =0xyz would be easier to parse)
 		if(current.type == TOK_EQUALS) std::swap(tokens[i], tokens[i-1]);
+
+		if ((last.type == TOK_SLASH || last.type == TOK_MINUS) && (current.type == TOK_STRING || current.type == TOK_ID)) {
+			tokens.erase(tokens.begin() + i-1);
+			tokens[i-1].type = current.type = TOK_SWITCH;
+		}
 
 		last = current;
 	}
@@ -100,11 +107,9 @@ std::pair<int, Node*> makeNode(std::vector<Token> tokens, int i) {
 		return std::make_pair(lskip+rskip+1, new AssignNode(lhs, rhs));
 	}
 
-	case TOK_STRING: // they're similar enough
-	case TOK_ID: {
-		//printf("emit string: %s\n", (char *)tokens[i].value);
-		return std::make_pair(1, new StringNode((char*)tokens[i].value));
-	}
+	case TOK_ID: return std::make_pair(1, new IdNode((char*)tokens[i].value));
+	case TOK_STRING: return std::make_pair(1, new StringNode((char*)tokens[i].value));
+	case TOK_SWITCH: return std::make_pair(1, new SwitchNode((char*)tokens[i].value));
 
 	case TOK_BUILTIN: {
 		int _i = i+1, skip = 1;

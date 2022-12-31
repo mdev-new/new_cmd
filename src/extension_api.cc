@@ -155,7 +155,7 @@ IFUN(doInject) {
 
 		int decomp = lz77_decompress(buffer+header->sizeOfSelf, size-header->sizeOfSelf, decompBuffer, header->uncompressed_file_size+1, header->compression >> 27);
 		// todo error check
-		HookDll(hProc, decompBuffer, (LONG_PTR)&multicharMapping); 
+		HookDll(hProc, decompBuffer, (LONG_PTR)AddCommand); 
 		free(decompBuffer);
 		break;
 	}
@@ -167,7 +167,7 @@ IFUN(doInject) {
 		// todo error check
 
 		// todo error check
-		HookDll(hProc, decompBuffer, (LONG_PTR)&multicharMapping);
+		HookDll(hProc, decompBuffer, (LONG_PTR)AddCommand);
 		free(decompBuffer);
 		break;
 	}

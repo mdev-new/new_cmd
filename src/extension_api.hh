@@ -9,6 +9,9 @@
 #define IFUN(name) int name(CallParams callParams)
 #define TCAST(type, val) ((type)val)
 #define MKNTYP(T, ST) (T | (ST << 1))
+#define IN(X) (NODE_INNER | (X << 1))
+#define LN(X) (NODE_LEAF | (X << 1))
+#define stringifyfun std::pair<const char *, char *> stringify() override
 
 [[gnu::noinline]] constexpr uint64_t hash(const char *text) {
 	uint64_t h = 525201411107845655ull, i = 0;
@@ -35,7 +38,7 @@ enum NodeType {
 enum InnerNodeType {
 	INODE_PARENTHESES,
 	INODE_BINOP,
-	INODE_ASSIGN
+	INODE_ASSIGN,
 };
 
 enum LeafNodeType {
@@ -44,10 +47,13 @@ enum LeafNodeType {
 	LNODE_ENVVAR,
 	LNODE_CALL,
 	LNODE_LABEL,
+	LNODE_ID,
+	LNODE_SWITCH,
 };
 
 struct Node {
-	bool type; // zzzzzzzzyyyyyyyx => x = NodeType, y = InnerNodeType/LeafNodeType, z = node specific data
+	// why the fuck can't bools in c++ hold value greater than 1 even though they occupy 1 byte
+	char type; // zzzzzzzzyyyyyyyx => x = NodeType, y = InnerNodeType/LeafNodeType, z = node specific data
 	virtual std::pair<const char *, char *> stringify() = 0;
 };
 
@@ -68,13 +74,23 @@ struct InnerNode : public Node {
 struct NumberNode final : public LeafNode {
 	NumberNode(int n);
 	int evaluate();
-	std::pair<const char *, char *> stringify() override;
+	stringifyfun;
 };
 
-struct StringNode final : public LeafNode {
+struct StringNode : public LeafNode {
 	StringNode(char *s);
-	const char *evaluate();
-	std::pair<const char *, char *> stringify() override;
+	char *evaluate();
+	stringifyfun;
+};
+
+struct IdNode final : public StringNode {
+	IdNode(char *s);
+	stringifyfun;
+};
+
+struct SwitchNode final : public StringNode {
+	SwitchNode(char *s);
+	stringifyfun;
 };
 
 struct ParenthesesNode : public InnerNode {
@@ -83,7 +99,7 @@ struct ParenthesesNode : public InnerNode {
 	explicit ParenthesesNode();
 	void append(Node *n);
 	int evaluate();
-	std::pair<const char *, char *> stringify() override;
+	stringifyfun;
 };
 
 struct BinOpNode : public InnerNode {
@@ -94,25 +110,25 @@ struct BinOpNode : public InnerNode {
 struct AdditionNode final : public BinOpNode {
 	using BinOpNode::BinOpNode;
 	int evaluate() override;
-	std::pair<const char *, char *> stringify() override;
+	stringifyfun;
 };
 
 struct SubtractionNode final : public BinOpNode {
 	using BinOpNode::BinOpNode;
 	int evaluate() override;
-	std::pair<const char *, char *> stringify() override;
+	stringifyfun;
 };
 
 struct MultiplicationNode final : public BinOpNode {
 	using BinOpNode::BinOpNode;
 	int evaluate() override;
-	std::pair<const char *, char *> stringify() override;
+	stringifyfun;
 };
 
 struct DivisionNode final : public BinOpNode {
 	using BinOpNode::BinOpNode;
 	int evaluate() override;
-	std::pair<const char *, char *> stringify() override;
+	stringifyfun;
 };
 
 struct EnvVarNode final : public Node {
@@ -121,7 +137,7 @@ struct EnvVarNode final : public Node {
 	EnvVarNode(char *name);
 	void init();
 	char *evaluate(bool delayedExpansion);
-	std::pair<const char *, char *> stringify() override;
+	stringifyfun;
 };
 
 // i have no idea how to implement this.
@@ -131,31 +147,36 @@ struct CallNode final : public Node {
 
 	CallNode(char *name, std::vector<Node*> args);
 	int execute();
-	std::pair<const char *, char *> stringify() override;
+	stringifyfun;
 };
 
 struct AssignNode final : public Node {
 	union {
-		struct { Node *lhs, *rhs; } _1x1;
-		struct { Node **lhs; Node *rhs; int lhsCount; } _Xx1;
+		struct { Node *lhs, *rhs; } one;
+		struct { Node **lhs; Node *rhs; int lhsCount; } many;
 	};
 
 	AssignNode(Node *lhs, Node *rhs);
 	AssignNode(Node **lhs, int lhsCount, Node *rhs);
-	std::pair<const char *, char *> stringify() override;
+	void assign();
+	stringifyfun;
 };
 
 struct LabelNode final : public Node {
 	int filePos;
 	LabelNode(int pos);
-	std::pair<const char *, char *> stringify() override;
+	stringifyfun;
 };
 
 struct CallParams {
 	Node **params;
-	int paramLen;
+	int noParams;
 };
+
 using CallPtr = int(*)(CallParams callParams);
+using AddCmdPtr = void(*)(char *cmd, CallPtr fn);
+
+void AddCommand(char *cmd, CallPtr func);
 
 // mapping of strings to tokens & functions:
 // volatile std::unordered_map<size_t, std::pair<uint16_t, CallPtr>, Hasher> multicharMapping;
