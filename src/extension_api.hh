@@ -22,12 +22,8 @@
 	return h;
 }
 
-// lets do little bit of trolling
-// to avoid double hashing
 struct Hasher {
-	size_t operator()(const size_t &h) const {
-		return h;
-	}
+	size_t operator()(const size_t &h) const { return h; }
 };
 
 enum NodeType {
@@ -89,7 +85,8 @@ struct IdNode final : public StringNode {
 };
 
 struct SwitchNode final : public StringNode {
-	SwitchNode(char *s);
+	char prefix;
+	SwitchNode(char *s, char pref);
 	stringifyfun;
 };
 
@@ -174,9 +171,4 @@ struct CallParams {
 };
 
 using CallPtr = int(*)(CallParams callParams);
-using AddCmdPtr = void(*)(char *cmd, CallPtr fn);
-
-void AddCommand(char *cmd, CallPtr func);
-
-// mapping of strings to tokens & functions:
-// volatile std::unordered_map<size_t, std::pair<uint16_t, CallPtr>, Hasher> multicharMapping;
+using RegisterCmdPtr = void(*)(char *cmd, CallPtr fn);

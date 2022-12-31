@@ -70,9 +70,15 @@ int main(int argc, char *argv[]) {
 
 	for(Node *n : intp.nodes) prettyPrint(0, n);
 
+	struct timespec begin, end; 
+	clock_gettime(CLOCK_REALTIME, &begin);
+
 	int retncode = intp.interpret();
 
-	printf("%%hello%% = %s\n", getenv("hello"));
+	clock_gettime(CLOCK_REALTIME, &end);
+	printf("Interpreting took: %.3f ms\n", (end.tv_sec - begin.tv_sec) + (end.tv_nsec - begin.tv_nsec)*1e-6);
+
+	//printf("%%hello%% = %s\n", getenv("hello"));
 
 	free(buffer);
 	fclose(f);

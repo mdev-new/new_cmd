@@ -1,21 +1,13 @@
 #pragma once
 #include "lexer.hpp"
-#include <cstring>
 #include <vector>
-#include <memory>
-#include <typeinfo>
 #include "extension_api.hh"
 
 #define WITHCHILDREN (1 << 15)
 #define BARETYPE (0xFF)
 
-extern volatile std::unordered_map<size_t, std::pair<uint16_t, CallPtr>, Hasher> multicharMapping;
-// TODO EXPRESSION TREE
-
-// I hate that this has to be here but whatever
-
-// implemented in nodeimpl.cxx
-int evalExpr(Node *root);
+extern std::unordered_map<size_t, std::pair<uint16_t, CallPtr>, Hasher> multicharMapping;
+extern int evalExpr(Node *root);
 
 class Parser {
 	Lexer lexer;

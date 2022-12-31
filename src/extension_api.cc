@@ -148,14 +148,14 @@ IFUN(doInject) {
 	if(header->magic != MAGIC) return -1; // TODO
 
 	switch(header->compression & 0b1111) {
-	case UNCOMPRESSED: HookDll(hProc, buffer+header->sizeOfSelf, (LONG_PTR)&multicharMapping); break;
+	case UNCOMPRESSED: HookDll(hProc, buffer+header->sizeOfSelf, (LONG_PTR)RegisterCommand); break;
 	case ALGO_LZ77: {
 		char *decompBuffer = malloc(header->uncompressed_file_size);
 		// todo error check
 
 		int decomp = lz77_decompress(buffer+header->sizeOfSelf, size-header->sizeOfSelf, decompBuffer, header->uncompressed_file_size+1, header->compression >> 27);
 		// todo error check
-		HookDll(hProc, decompBuffer, (LONG_PTR)AddCommand); 
+		HookDll(hProc, decompBuffer, (LONG_PTR)RegisterCommand); 
 		free(decompBuffer);
 		break;
 	}
@@ -167,7 +167,7 @@ IFUN(doInject) {
 		// todo error check
 
 		// todo error check
-		HookDll(hProc, decompBuffer, (LONG_PTR)AddCommand);
+		HookDll(hProc, decompBuffer, (LONG_PTR)RegisterCommand);
 		free(decompBuffer);
 		break;
 	}

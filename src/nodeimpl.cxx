@@ -2,6 +2,7 @@
 #include "parser.hpp"
 #include <cstdlib>
 #include <cstdio>
+#include <cstring>
 
 #define mkstringify(x, z) std::pair<const char *, char *> x::stringify() { return std::make_pair(#x, z); };
 
@@ -50,12 +51,13 @@ mkstringify(StringNode, this->str);
 /* === SwitchNode === */
 // i am aware this is stupid but i'm doing it for the sake of easier parsing
 
-SwitchNode::SwitchNode(char *s)
- : StringNode(s)
+SwitchNode::SwitchNode(char *s, char pref)
+ : StringNode(s),
+ prefix(pref)
 {
 	this->type = MKNTYP(NODE_LEAF, LNODE_SWITCH);
 }
-mkstringify(SwitchNode, this->str);
+mkstringify(SwitchNode, this->str); // todo prepend the prefix to the string
 
 /* === IdNode === */
 // i am aware this is stupid but i'm doing it for the sake of easier parsing

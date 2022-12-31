@@ -49,8 +49,9 @@ int SortTokens(std::vector<Token> &tokens, int start, int breaktok) {
 		if(current.type == TOK_EQUALS) std::swap(tokens[i], tokens[i-1]);
 
 		if ((last.type == TOK_SLASH || last.type == TOK_MINUS) && (current.type == TOK_STRING || current.type == TOK_ID)) {
+			char pref = (last.type == TOK_SLASH)? '/' : '-';
 			tokens.erase(tokens.begin() + i-1);
-			tokens[i-1].type = current.type = TOK_SWITCH;
+			tokens[i-1] = current = (Token){TOK_SWITCH, current.value, pref};
 		}
 
 		last = current;
@@ -109,7 +110,7 @@ std::pair<int, Node*> makeNode(std::vector<Token> tokens, int i) {
 
 	case TOK_ID: return std::make_pair(1, new IdNode((char*)tokens[i].value));
 	case TOK_STRING: return std::make_pair(1, new StringNode((char*)tokens[i].value));
-	case TOK_SWITCH: return std::make_pair(1, new SwitchNode((char*)tokens[i].value));
+	case TOK_SWITCH: return std::make_pair(1, new SwitchNode((char*)tokens[i].value, tokens[i].additionalData));
 
 	case TOK_BUILTIN: {
 		int _i = i+1, skip = 1;
