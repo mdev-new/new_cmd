@@ -6,25 +6,7 @@
 
 // this header will eventually be public
 
-#define IFUN(name) int name(CallParams callParams)
-#define TCAST(type, val) ((type)val)
-#define MKNTYP(T, ST) (T | (ST << 1))
-#define IN(X) (NODE_INNER | (X << 1))
-#define LN(X) (NODE_LEAF | (X << 1))
 #define stringifyfun std::pair<const char *, char *> stringify() override
-
-[[gnu::noinline]] constexpr uint64_t hash(const char *text) {
-	uint64_t h = 525201411107845655ull, i = 0;
-	while (text[i++]) {
-		h = (h ^ text[i]) * 0x5bd1e9955bd1e995;
-		h ^= h >> 47;
-	}
-	return h;
-}
-
-struct Hasher {
-	size_t operator()(const size_t &h) const { return h; }
-};
 
 enum NodeType {
 	NODE_LEAF,
@@ -47,9 +29,10 @@ enum LeafNodeType {
 	LNODE_SWITCH,
 };
 
+struct InterpreterState;
 struct Node {
-	// why the fuck can't bools in c++ hold value greater than 1 even though they occupy 1 byte
-	char type; // zzzzzzzzyyyyyyyx => x = NodeType, y = InnerNodeType/LeafNodeType, z = node specific data
+	// zzzzzzzzyyyyyyyx => x = NodeType, y = InnerNodeType/LeafNodeType, z = node specific data
+	char type;
 	virtual std::pair<const char *, char *> stringify() = 0;
 };
 
@@ -132,7 +115,6 @@ struct EnvVarNode final : public Node {
 	char *name, *value = nullptr;
 
 	EnvVarNode(char *name);
-	void init();
 	char *evaluate(bool delayedExpansion);
 	stringifyfun;
 };
@@ -143,7 +125,7 @@ struct CallNode final : public Node {
 	std::vector<Node *> args;
 
 	CallNode(char *name, std::vector<Node*> args);
-	int execute();
+	int execute(InterpreterState *state);
 	stringifyfun;
 };
 
@@ -168,6 +150,7 @@ struct LabelNode final : public Node {
 struct CallParams {
 	Node **params;
 	int noParams;
+	InterpreterState *state;
 };
 
 using CallPtr = int(*)(CallParams callParams);

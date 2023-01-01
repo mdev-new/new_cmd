@@ -1,0 +1,11 @@
+todo
+- pipe support
+- redirection support
+- internal commands
+- %%x variables
+- %* variable
+- for, if, else
+- %random%
+- substrings, string replacements
+
+use native apis on win

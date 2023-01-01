@@ -1,13 +1,11 @@
 #pragma once
-#include "lexer.hpp"
 #include <vector>
-#include "extension_api.hh"
+#include "lexer.hpp"
+#include "nodes.hh"
+#include "shared.hh"
 
 #define WITHCHILDREN (1 << 15)
 #define BARETYPE (0xFF)
-
-extern std::unordered_map<size_t, std::pair<uint16_t, CallPtr>, Hasher> multicharMapping;
-extern int evalExpr(Node *root);
 
 class Parser {
 	Lexer lexer;

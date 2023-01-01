@@ -52,7 +52,7 @@ void prettyPrint(int level, Node *n) {
 	}
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[], char *envp[]) {
 	if(argc < 2) return 0;
 
 	setenv("mbat_version", "001al", true);
@@ -76,7 +76,9 @@ int main(int argc, char *argv[]) {
 	int retncode = intp.interpret();
 
 	clock_gettime(CLOCK_REALTIME, &end);
-	printf("Interpreting took: %.3f ms\n", (end.tv_sec - begin.tv_sec) + (end.tv_nsec - begin.tv_nsec)*1e-6);
+	double timetaken = (end.tv_sec - begin.tv_sec) + (end.tv_nsec - begin.tv_nsec)*1e-6;
+	fprintf(stderr, "Interpreting took: %.3f ms\n", timetaken);
+	fprintf(stderr, "Root nodes per second: %d\n", (int)(double)(intp.nodes.size() * (1000/timetaken)));
 
 	//printf("%%hello%% = %s\n", getenv("hello"));
 

@@ -142,11 +142,8 @@ EnvVarNode::EnvVarNode(char *name) : name(name) {
 	this->type = MKNTYP(NODE_LEAF, LNODE_ENVVAR);
 }
 
-void EnvVarNode::init() {
-	value = getenv(name);
-}
-
 char *EnvVarNode::evaluate(bool delayedExpansion) {
+	if(value == nullptr) value = getenv(name);
 	if(!delayedExpansion) return value;
 	return getenv(name);
 }
@@ -161,19 +158,19 @@ CallNode::CallNode(char *name, std::vector<Node*> arguments)
 	this->type = MKNTYP(NODE_LEAF, LNODE_CALL);
 }
 
-int CallNode::execute() {
-	size_t hashed = hash(this->funcName);
+int CallNode::execute(InterpreterState *state) {
+	_hashtype_ hashed = _hashfunc_(this->funcName);
 
 	if(multicharMapping.count(hashed) > 0) {
 		CallPtr funcPtr = multicharMapping.at(hashed).second;
 		if(funcPtr != nullptr) {
-			return funcPtr((CallParams){args.data(), args.size()});
+			return funcPtr((CallParams){args.data(), args.size(), state});
 		}
 	} else {
 		// todo find the executable
 		// and execute with stringified params
 	}
-	
+
 	return 0;
 }
 mkstringify(CallNode, this->funcName);

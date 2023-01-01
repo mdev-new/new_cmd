@@ -1,19 +1,17 @@
 #include "lexer.hpp"
+#include "shared.hh"
 #include <cstdlib>
 #include <cstdio>
 #include <unordered_map>
 #include <utility>
-#include "interpreter.hh"
 
 static char *strndup(const char *str, size_t chars) {
-	int n;
-
 	char *buffer = (char *) malloc(chars +1);
-	if (buffer) {
-		for (n = 0; ((n < chars) && (str[n] != 0)) ; n++) buffer[n] = str[n];
-		buffer[n] = 0;
-	}
+	if (!buffer) return nullptr;
 
+	int n = 0;
+	for (; ((n < chars) && (str[n] != 0)); n++) buffer[n] = str[n];
+	buffer[n] = 0;
 	return buffer;
 }
 
@@ -71,8 +69,9 @@ Token Lexer::get() {
 
 		char *identifier = strndup(buffer+idstart, idx - idstart);
 
-		if(multicharMapping.count(hash(identifier)) > 0) {
-			auto _token = multicharMapping.at(hash(identifier)).first;
+		_hashtype_ h = _hashfunc_(identifier);
+		if(multicharMapping.count(h) > 0) {
+			auto _token = multicharMapping.at(h).first;
 			return (Token){_token, identifier, 0};
 		} else return (Token){TOK_ID, identifier, idx - idstart};
 	}

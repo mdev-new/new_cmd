@@ -5,3 +5,8 @@ a.out
 /*.s
 out.txt
 out1.txt
+*.E
+*.exe
+callgrind.*
+perf.*
+gmon.out

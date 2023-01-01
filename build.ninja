@@ -1,6 +1,6 @@
-#cflags=-Og -ggdb3 -fsanitize=address -static-libgcc -static-libstdc++
+#cflags=-Og -ggdb3 -pg -fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=null -fsanitize=bounds -fsanitize=bounds-strict -static-libgcc -static-libstdc++
 
-#-static-libgcc -static-libstdc++ # make things a tiny bit faster at the expense of speed
+#-static-libgcc -static-libstdc++ # make things a tiny bit faster at the expense of size
 # todo research -fno-plt
 cflags=-Ofast -flto -fshort-enums -msse -msse2 -msse4.2 -mavx -mavx2 -mmmx -funsafe-math-optimizations -ftree-vectorize -ffast-math -ftree-slp-vectorize -fassociative-math -fvisibility=hidden -fcompare-debug-second -fno-stack-protector -fno-math-errno -fno-ident -fno-asynchronous-unwind-tables -fno-exceptions -ffunction-sections -fdata-sections -Wl,-s,--gc-sections,--reduce-memory-overheads,--build-id=none -DNDEBUG
 shutup=-w -std=gnu++17 -fpermissive -Wno-narrowing -Wno-unused-result -Wno-format
@@ -13,7 +13,7 @@ rule cpp
   description = cpp $out
 
 rule link
-  command = g++ -o $out $cflags $in
+  command = ccache g++ -o $out $cflags $in
   description = cpp $out
 
 build bin/main.o: cpp src/main.cpp
