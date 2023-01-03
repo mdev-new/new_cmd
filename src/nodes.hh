@@ -3,10 +3,17 @@
 #include <cstdint>
 #include <cstddef>
 #include <vector>
+#include <stack>
 
-// this header will eventually be public
+// NOTE TO SELF: This doubles down as public API
+// so even tho i don't like the placement of things here they have to stay \_(ツ)_/
 
 #define stringifyfun std::pair<const char *, char *> stringify() override
+
+#define _hashfunc_(x) hash32(x)
+#define _hashtype_ uint32_t
+
+#define IFUN(name) int name(CallParams callParams)
 
 enum NodeType {
 	NODE_LEAF,
@@ -30,8 +37,8 @@ enum LeafNodeType {
 };
 
 struct InterpreterState;
+struct Token;
 struct Node {
-	// zzzzzzzzyyyyyyyx => x = NodeType, y = InnerNodeType/LeafNodeType, z = node specific data
 	char type;
 	virtual std::pair<const char *, char *> stringify() = 0;
 };
@@ -62,7 +69,7 @@ struct StringNode : public LeafNode {
 	stringifyfun;
 };
 
-struct IdNode final : public StringNode {
+struct IdNode : public StringNode {
 	IdNode(char *s);
 	stringifyfun;
 };
@@ -123,8 +130,9 @@ struct EnvVarNode final : public Node {
 struct CallNode final : public Node {
 	char *funcName;
 	std::vector<Node *> args;
+	bool silent;
 
-	CallNode(char *name, std::vector<Node*> args);
+	CallNode(char *name, std::vector<Node*> args, bool slient = false);
 	int execute(InterpreterState *state);
 	stringifyfun;
 };
@@ -141,10 +149,25 @@ struct AssignNode final : public Node {
 	stringifyfun;
 };
 
-struct LabelNode final : public Node {
-	int filePos;
-	LabelNode(int pos);
+struct LabelNode final : public IdNode {
+	int pos;
+	bool registered;
+	LabelNode(char *name, int pos);
+	void _register_(InterpreterState *state);
 	stringifyfun;
+};
+
+struct InterpreterState {
+	bool extensions;
+	bool delayedExpansion;
+	bool echo;
+	int filepos;
+
+	std::unordered_map<_hashtype_, int> labels;
+	std::stack<char*> directoryStack;
+	std::stack<std::unordered_map<char *, char *>> localEnvironments; //todo every call level recieves fresh one, so that means a stack of stacks?
+	char *buffer;
+	size_t bufferSize;
 };
 
 struct CallParams {

@@ -7,7 +7,7 @@
 // optimize as much as possible
 
 // todo use windows functions on win and linux functions on linux
-// do not rely as much on stdlib on windows
+// do not rely as much on stdlib
 
 #define IFUN(name) int name(CallParams callParams)
 #define fe(x,y,z) {_hashfunc_(x), std::make_pair(y,z)},
@@ -31,6 +31,7 @@
 	return h;
 }
 
+// -- HIGH PRIORITY --
 // todo finish implementation
 IFUN(doSet) {
 	Node *current;
@@ -56,7 +57,7 @@ IFUN(doCls) {
 #ifdef _WIN64
 	CONSOLE_SCREEN_BUFFER_INFO ConsoleScreenInfo;
 	HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
-	GetConsoleScreenBufferInfo(handle,  &ConsoleScreenInfo);
+	GetConsoleScreenBufferInfo(handle, &ConsoleScreenInfo);
 
 	SMALL_RECT ScrollRect = {
 		.Top = 0,
@@ -66,7 +67,7 @@ IFUN(doCls) {
 	};
 
 	CHAR_INFO chinfo = {
-		.Char.UnicodeChar = L' ',
+		.Char.AsciiChar = ' ',
 		.Attributes = ConsoleScreenInfo.wAttributes
 	};
 
@@ -76,112 +77,17 @@ IFUN(doCls) {
 	return 0;
 }
 
-IFUN(doCopy) {
-	return 0;
-}
-
-IFUN(doCtty) {
-	return 0;
-}
-
-IFUN(doDate) {
-	return 0;
-}
-
-IFUN(doTime) {
-	return 0;
-}
-
-IFUN(doDel) {
-	return 0;
-}
-
-IFUN(doDir) {
-	return 0;
-}
-
 IFUN(doEcho) {
 	return 0;
 }
 
-IFUN(doErase) {
-	return 0;
-}
-
 IFUN(doGoto) {
-	return 0;
-}
-
-IFUN(doLabel) {
-	return 0;
-}
-
-IFUN(doMkdir) {
-	return 0;
-}
-
-IFUN(doMove) {
-	return 0;
-}
-
-IFUN(doPath) {
-	return 0;
-}
-
-IFUN(doPause) {
-	return 0;
-}
-
-IFUN(doRename) {
-	return 0;
-}
-
-IFUN(doRmdir) {
-	return 0;
-}
-
-IFUN(doShift) {
+	//todo check param type
+	callParams.state->filepos = callParams.state->labels[_hashfunc_(TCAST(IdNode *, callParams.params[0])->str)];
 	return 0;
 }
 
 IFUN(doStart) {
-	return 0;
-}
-
-IFUN(doTitle) {
-#ifdef _WIN64
-	SetConsoleTitleA(TCAST(StringNode *, callParams.params[0])->str);
-#endif
-	return 0;
-}
-
-IFUN(doType) {
-	for(int i = 0; i < callParams.noParams; i++) {
-		if((callParams.params[i]->type & BARETYPE) == LN(LNODE_ID) || (callParams.params[i]->type & BARETYPE) == LN(LNODE_STRING)) {
-			// todo replace with createfile, getfilesize & readfile
-			FILE *f = fopen(TCAST(StringNode *, callParams.params[i])->str, "r");
-			fseek(f, 0, SEEK_END);
-			int sz = ftell(f);
-			rewind(f);
-
-			char *buf = malloc((sz+1)*sizeof(char));
-			fread(buf, sz, 1, f);
-			buf[sz] = 0;
-			write(1, buf, sz);
-
-			free(buf);
-			fclose(f);
-		}
-	}
-
-	return 0;
-}
-
-IFUN(doVerify) {
-	return 0;
-}
-
-IFUN(doVol) {
 	return 0;
 }
 
@@ -190,24 +96,6 @@ IFUN(doEndlocal) {
 }
 
 IFUN(doSetlocal) {
-	return 0;
-}
-
-IFUN(doPushd) {
-	char fullpath[PATH_MAX] = {0};
-	realpath(TCAST(StringNode *, callParams.params[0])->str, fullpath);
-	callParams.state->directoryStack.push(strdup(fullpath));
-	chdir(fullpath);
-	return 0;
-}
-
-IFUN(doPopd) {
-	chdir(callParams.state->directoryStack.top());
-	callParams.state->directoryStack.pop();
-	return 0;
-}
-
-IFUN(doAssoc) {
 	return 0;
 }
 
@@ -231,6 +119,118 @@ IFUN(doColor) {
 	return 0;
 }
 
+IFUN(doExit) {
+	return 0;
+}
+
+// -- MID PRIORITY --
+
+IFUN(doCopy) {
+	return 0;
+}
+
+IFUN(doDel) {
+	return 0;
+}
+
+IFUN(doErase) {
+	return 0;
+}
+
+IFUN(doMkdir) {
+	return 0;
+}
+
+IFUN(doDir) {
+	return 0;
+}
+
+IFUN(doMove) {
+	return 0;
+}
+
+IFUN(doRename) {
+	return 0;
+}
+
+IFUN(doRmdir) {
+	return 0;
+}
+
+// -- LOW PRIORITY --
+
+IFUN(doDate) {
+	return 0;
+}
+
+IFUN(doTime) {
+	return 0;
+}
+
+IFUN(doPause) {
+#ifdef _WIN64
+	printf("Press any key to continue...");
+
+	FlushConsoleInputBuffer(GetStdHandle(STD_INPUT_HANDLE));
+	_getch();
+
+#endif
+	return 0;
+}
+
+IFUN(doShift) {
+	return 0;
+}
+
+IFUN(doTitle) {
+#ifdef _WIN64
+	// this will NOT work
+	SetConsoleTitleA(TCAST(StringNode *, callParams.params[0])->str);
+#endif
+	return 0;
+}
+
+IFUN(doType) {
+	for(int i = 0; i < callParams.noParams; i++) {
+		if((callParams.params[i]->type & BARETYPE) == LN(LNODE_ID) || (callParams.params[i]->type & BARETYPE) == LN(LNODE_STRING)) {
+			// todo replace with createfile, getfilesize & readfile
+			FILE *f = fopen(TCAST(StringNode *, callParams.params[i])->str, "r");
+			fseek(f, 0, SEEK_END);
+			int sz = ftell(f);
+			rewind(f);
+
+			char *buf = malloc((sz+1)*sizeof(char));
+			fread(buf, sz, 1, f);
+			buf[sz] = 0;
+			write(1, buf, sz);
+			write(1, "\n", 1);
+
+			free(buf);
+			fclose(f);
+		}
+	}
+
+	return 0;
+}
+
+IFUN(doPushd) {
+	char fullpath[PATH_MAX] = {0};
+	realpath(TCAST(StringNode *, callParams.params[0])->str, fullpath);
+	callParams.state->directoryStack.push(strdup(fullpath));
+	chdir(fullpath);
+	return 0;
+}
+
+IFUN(doPopd) {
+	chdir(callParams.state->directoryStack.top());
+	callParams.state->directoryStack.pop();
+	return 0;
+}
+
+IFUN(doAssoc) {
+	return 0;
+}
+
 IFUN(doFtype) {
 	return 0;
 }
@@ -247,9 +247,7 @@ IFUN(doMklink) {
 	return 0;
 }
 
-IFUN(doExit) {
-	return 0;
-}
+// -- VERY LOW PRIORITY --
 
 IFUN(doHelp) {
 	char *str = 
@@ -265,7 +263,6 @@ IFUN(doVer) {
 	return 0;
 }
 
-// functions that do.. nothing
 IFUN(doRem) {
 	return 0;
 }
@@ -274,8 +271,23 @@ IFUN(doBreak) {
 	return 0;
 }
 
-// no need to implement
 IFUN(doPrompt) {
+	return 0;
+}
+
+IFUN(doVerify) {
+	return 0;
+}
+
+IFUN(doVol) {
+	return 0;
+}
+
+IFUN(doLabel) {
+	return 0;
+}
+
+IFUN(doPath) {
 	return 0;
 }
 
@@ -287,22 +299,21 @@ std::unordered_map<_hashtype_, std::pair<uint8_t, CallPtr>, Hasher> multicharMap
 	fe("do", TOK_DO, nullptr)
 	fe("else", TOK_ELSE, nullptr)
 	fe("in", TOK_IN, nullptr)
+	fe("for", TOK_FOR, nullptr)
+	fe("if", TOK_IF, nullptr)
 
 	fe("call", TOK_BUILTIN, doCall)
 	fe("cd", TOK_BUILTIN, doChdir)
 	fe("chdir", TOK_BUILTIN, doChdir)
 	fe("cls", TOK_BUILTIN, doCls)
 	fe("copy", TOK_BUILTIN, doCopy)
-	fe("ctty", TOK_BUILTIN, doCtty)
 	fe("date", TOK_BUILTIN, doDate)
 	fe("del", TOK_BUILTIN, doDel)
 	fe("dir", TOK_BUILTIN, doDir)
 	fe("echo", TOK_BUILTIN, doEcho)
 	fe("erase", TOK_BUILTIN, doErase)
-	fe("for", TOK_FOR, nullptr)
 	fe("goto", TOK_BUILTIN, doGoto)
 	fe("help", TOK_BUILTIN, doHelp)
-	fe("if", TOK_IF, nullptr)
 	fe("label", TOK_BUILTIN, doLabel)
 	fe("md", TOK_BUILTIN, doMkdir)
 	fe("mkdir", TOK_BUILTIN, doMkdir)
@@ -346,10 +357,16 @@ void RegisterCommand(char *cmd, CallPtr func) {
 	multicharMapping[_hashfunc_(cmd)] = std::make_pair(TOK_BUILTIN, func);
 }
 
+void RegisterLabel(InterpreterState *state, LabelNode *n) {
+	state->labels[_hashfunc_(n->str)] = n->pos;
+}
+
 Interpreter::Interpreter(char *buffer, size_t size)
  : parser(buffer, size)
 {
 	parser.parse();
+	state.buffer = buffer;
+	state.bufferSize = size;
 }
 
 extern char *itoa_(int i);
@@ -358,13 +375,20 @@ int Interpreter::interpret() {
 
 	// loop over root nodes
 	Node *current;
-	for(long i = 0; i < this->nodes.size(); i++) {
-		current = nodes[i];
+	//int &i = this->state.filepos;
+	for(; this->state.filepos < this->nodes.size(); this->state.filepos++) {
+		current = nodes[this->state.filepos];
 		switch(current->type) {
 		case LN(LNODE_CALL): {
 			auto retcode = TCAST(CallNode*, current)->execute(&this->state);
 			setenv("errorlevel", itoa_(retcode), true);
-		} break;
+			break;
+		};
+
+		case LN(LNODE_LABEL): {
+			TCAST(LabelNode *, current)->_register_(&this->state);
+			break;
+		}
 		}
 	}
 

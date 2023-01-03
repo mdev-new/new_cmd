@@ -1,6 +1,6 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
-#include "extension_api.hh"
+#include "cmd_sdk.hh"
 
 RegisterCmdPtr registerCommand = nullptr;
 

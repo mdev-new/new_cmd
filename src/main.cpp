@@ -18,9 +18,11 @@
 //#include <Windows.h>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
+
+#include <unistd.h>
 
 #include "win.hh"
-#include "parser.hpp"
 #include "interpreter.hh"
 
 void print_binary(unsigned int number) {
@@ -53,24 +55,31 @@ void prettyPrint(int level, Node *n) {
 }
 
 int main(int argc, char *argv[], char *envp[]) {
-	if(argc < 2) return 0;
-
 	setenv("mbat_version", "001al", true);
+	if(argc < 2) {
+		char line[512], path[4096];
+		printf("%s> ", getwd(path));
+		while(fgets(line, sizeof line, stdin) != NULL) {
+			Interpreter(line, strlen(line)).interpret();
+			printf("%s> ", getwd(path));
+		}
+
+		return 0;
+	}
 
 	FILE *f = fopen(argv[1], "r");
 	fseek(f, 0, SEEK_END);
 	size_t size = ftell(f);
 	rewind(f);
 
-	char *buffer = malloc(size+1);
+	char *buffer = calloc(size, sizeof(char));
 	fread(buffer, size, 1, f);
-	buffer[size] = 0;
 
 	Interpreter intp(buffer, size);
 
 	for(Node *n : intp.nodes) prettyPrint(0, n);
 
-	struct timespec begin, end; 
+	struct timespec begin, end;
 	clock_gettime(CLOCK_REALTIME, &begin);
 
 	int retncode = intp.interpret();
@@ -78,7 +87,7 @@ int main(int argc, char *argv[], char *envp[]) {
 	clock_gettime(CLOCK_REALTIME, &end);
 	double timetaken = (end.tv_sec - begin.tv_sec) + (end.tv_nsec - begin.tv_nsec)*1e-6;
 	fprintf(stderr, "Interpreting took: %.3f ms\n", timetaken);
-	fprintf(stderr, "Root nodes per second: %d\n", (int)(double)(intp.nodes.size() * (1000/timetaken)));
+	fprintf(stderr, "Root nodes per second: %.f\n", intp.nodes.size() * (1000./timetaken));
 
 	//printf("%%hello%% = %s\n", getenv("hello"));
 

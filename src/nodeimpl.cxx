@@ -1,5 +1,6 @@
 #pragma once
 #include "parser.hpp"
+#include "interpreter.hh"
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
@@ -143,7 +144,7 @@ EnvVarNode::EnvVarNode(char *name) : name(name) {
 }
 
 char *EnvVarNode::evaluate(bool delayedExpansion) {
-	if(value == nullptr) value = getenv(name);
+	if(value == nullptr) return value = getenv(name);
 	if(!delayedExpansion) return value;
 	return getenv(name);
 }
@@ -151,8 +152,9 @@ mkstringify(EnvVarNode, nullptr);
 
 
 /* === CallNode === */
-CallNode::CallNode(char *name, std::vector<Node*> arguments)
-:  args(arguments)
+CallNode::CallNode(char *name, std::vector<Node*> arguments, bool silent = false)
+:  args(arguments),
+   silent(silent)
 {
 	this->funcName = strdup(name);
 	this->type = MKNTYP(NODE_LEAF, LNODE_CALL);
@@ -160,6 +162,12 @@ CallNode::CallNode(char *name, std::vector<Node*> arguments)
 
 int CallNode::execute(InterpreterState *state) {
 	_hashtype_ hashed = _hashfunc_(this->funcName);
+
+	// todo stringify whole command
+
+	bool dontEcho = this->silent || state->echo;
+	if(!dontEcho) {
+	}
 
 	if(multicharMapping.count(hashed) > 0) {
 		CallPtr funcPtr = multicharMapping.at(hashed).second;
@@ -169,6 +177,8 @@ int CallNode::execute(InterpreterState *state) {
 	} else {
 		// todo find the executable
 		// and execute with stringified params
+
+		//printf("%s\n", strndup(state->buffer[this->args.front().txtStart], this->args.front().txtStart+this->args.back().txtStart+this->args.back().txtLength));
 	}
 
 	return 0;
@@ -204,9 +214,20 @@ mkstringify(AssignNode, nullptr);
 
 /* === LabelNode === */
 
-LabelNode::LabelNode(int pos)
- : filePos(pos)
+LabelNode::LabelNode(char *name, int pos)
+ : pos(pos),
+ IdNode(name)
 {
+	this->str = name;
 	this->type = MKNTYP(NODE_LEAF, LNODE_LABEL);
 }
-mkstringify(LabelNode, nullptr);
+
+void LabelNode::_register_(InterpreterState *state) {
+	if(!registered) {
+		RegisterLabel(state, this);
+		registered = true;
+	}
+	return;
+}
+
+mkstringify(LabelNode, this->str);

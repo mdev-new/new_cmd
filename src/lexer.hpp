@@ -7,13 +7,17 @@
 #include <vector>
 
 enum TokenType {
-	TOK_INVAL = 0,
-	TOK_EOF = 1,
+	TOK_INVAL = -1,
+	TOK_EOF = 0,
 	TOK_SPACE,
 	TOK_ID,
 	TOK_NUMBER,
 	TOK_STRING,
+
+	// created artificially by parser
 	TOK_SWITCH,
+	TOK_LABEL,
+	// ---
 
 	TOK_LEFTPAREN,
 	TOK_RIGHTPAREN,
@@ -34,6 +38,7 @@ enum TokenType {
 	TOK_PERCENT,
 	TOK_TILDE,
 	TOK_AND,
+	TOK_AT,
 
 	TOK_BUILTIN,
 	TOK_FOR,
@@ -47,6 +52,9 @@ struct Token {
 	short type;
 	uint64_t value;
 	uint64_t additionalData;
+
+	int txtStart;
+	int txtLength;
 };
 
 class Lexer {

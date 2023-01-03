@@ -54,6 +54,12 @@ int SortTokens(std::vector<Token> &tokens, int start, int breaktok) {
 			tokens[i-1] = current = (Token){TOK_SWITCH, current.value, pref};
 		}
 
+		if (last.type == TOK_COLON && (current.type == TOK_STRING || current.type == TOK_ID)) {
+			char pref = ':';
+			tokens.erase(tokens.begin() + i-1);
+			tokens[i-1] = current = (Token){TOK_LABEL, current.value, pref};
+		}
+
 		last = current;
 	}
 
@@ -103,6 +109,7 @@ std::pair<int, Node*> makeNode(std::vector<Token> tokens, int i) {
 	}
 
 	case TOK_EQUALS: {
+		// todo support multiple assignments (for example a=b=c=0)
 		auto [lskip, lhs] = makeNode(tokens, i+1);
 		auto [rskip, rhs] = makeNode(tokens, i+2);
 		return std::make_pair(lskip+rskip+1, new AssignNode(lhs, rhs));
@@ -111,6 +118,7 @@ std::pair<int, Node*> makeNode(std::vector<Token> tokens, int i) {
 	case TOK_ID: return std::make_pair(1, new IdNode((char*)tokens[i].value));
 	case TOK_STRING: return std::make_pair(1, new StringNode((char*)tokens[i].value));
 	case TOK_SWITCH: return std::make_pair(1, new SwitchNode((char*)tokens[i].value, tokens[i].additionalData));
+	case TOK_LABEL: return std::make_pair(1, new LabelNode((char*)tokens[i].value, i-1));
 
 	case TOK_BUILTIN: {
 		int _i = i+1, skip = 1;
@@ -126,7 +134,7 @@ std::pair<int, Node*> makeNode(std::vector<Token> tokens, int i) {
 			else delete nod;
 		}
 
-		return std::make_pair(_i-i, new CallNode((char*)tokens[i].value, args));
+		return std::make_pair(_i-i, new CallNode((char*)tokens[i].value, args, tokens[i-1].type == TOK_AT));
 	}
 
 	default: return std::make_pair(1, nullptr);

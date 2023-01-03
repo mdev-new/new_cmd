@@ -42,9 +42,9 @@ int main(int argc, char *argv[]) {
 	} break;
 
 	case 2: {
-		uint32_t type = ALGO_DEFLATE;
-		uint32_t bits = 0;
-		CompressFun compressPtr = deflcomp;
+		type = ALGO_DEFLATE;
+		bits = 0;
+		compressPtr = deflcomp;
 	} break;
 
 	default:

@@ -2,7 +2,7 @@
 
 #-static-libgcc -static-libstdc++ # make things a tiny bit faster at the expense of size
 # todo research -fno-plt
-cflags=-Ofast -flto -fshort-enums -msse -msse2 -msse4.2 -mavx -mavx2 -mmmx -funsafe-math-optimizations -ftree-vectorize -ffast-math -ftree-slp-vectorize -fassociative-math -fvisibility=hidden -fcompare-debug-second -fno-stack-protector -fno-math-errno -fno-ident -fno-asynchronous-unwind-tables -fno-exceptions -ffunction-sections -fdata-sections -Wl,-s,--gc-sections,--reduce-memory-overheads,--build-id=none -DNDEBUG
+cflags=-pipe -Ofast -flto -fshort-enums -march=native -mtune=native -msse -msse2 -msse4.2 -mavx -mavx2 -mmmx -funsafe-math-optimizations -ftree-vectorize -ffast-math -ftree-slp-vectorize -fassociative-math -fvisibility=hidden -fcompare-debug-second -fno-stack-protector -fno-math-errno -fno-ident -fno-asynchronous-unwind-tables -fno-exceptions -ffunction-sections -fdata-sections -Wl,-s,--gc-sections,--reduce-memory-overheads,--build-id=none -DNDEBUG
 shutup=-w -std=gnu++17 -fpermissive -Wno-narrowing -Wno-unused-result -Wno-format
 
 rule cpp

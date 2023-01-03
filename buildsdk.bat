@@ -1,0 +1,1 @@
+gcc -o sdk/dlltool.exe -O2 -s src/sdk/compress.c -I src/sdk

@@ -1,11 +1,62 @@
 todo
-- pipe support
-- redirection support
-- internal commands
-- %%x variables
-- %* variable
-- for, if, else
-- %random%
-- substrings, string replacements
+[ ] pipe support
+[ ] redirection support
+[ ] internal commands
+[ ] %%x variables
+[ ] %* variable
+[ ] for, if, else
+[ ] %random%
+[ ] substrings, string replacements
+[ ] echo on, off and @ commands
+[ ] .. => parent dir
 
 use native apis on win
+UNICODEEEEEE
+
+for every node maybe have string with the actual unparsed source
+
+up arrow to recall last command
+
+internals:
+ [ ] doSet
+ [ ] doCall
+ [x] doChdir
+ [x] doCls
+ [ ] doEcho
+ [x] doGoto
+ [ ] doStart
+ [ ] doEndlocal
+ [ ] doSetlocal
+ [x] doColor
+ [ ] doExit
+ [ ] doCopy
+ [ ] doDel
+ [ ] doErase
+ [ ] doMkdir
+ [ ] doDir
+ [ ] doMove
+ [ ] doRename
+ [ ] doRmdir
+ [ ] doDate
+ [ ] doTime
+ [x] doPause
+ [ ] doShift
+ [x] doTitle
+ [x] doType
+ [x] doPushd
+ [x] doPopd
+ [ ] doAssoc
+ [ ] doFtype
+ [ ] doMore
+ [ ] doChoice
+ [ ] doMklink
+ [x] doHelp
+ [x] doVer
+ [x] doRem
+ [x] doBreak
+ [n] doPrompt
+ [ ] doVerify
+ [ ] doVol
+ [ ] doLabel
+ [n] doPath
+ [x] doInject
