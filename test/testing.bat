@@ -1,1 +1,2 @@
-ver
+extend "example.bin"
+test

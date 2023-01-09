@@ -4,12 +4,10 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
-void setenv(char *name, char *value, bool overwrite) {
-	SetEnvironmentVariable(name, value);
-}
+#include <conio.h>
 
-void unsetenv(char *name) {
-	SetEnvironmentVariable(name, NULL);
-}
+void setenv(char *name, char *value, bool overwrite);
+void unsetenv(char *name);
+char *realpath(char *rel, char *abs);
 
 #endif

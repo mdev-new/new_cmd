@@ -1,19 +1,19 @@
-#cflags=-Og -ggdb3 -pg -fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=null -fsanitize=bounds -fsanitize=bounds-strict -static-libgcc -static-libstdc++
+cflags=-Og -ggdb3 -static -static-libgcc -static-libstdc++
 
 #-static-libgcc -static-libstdc++ # make things a tiny bit faster at the expense of size
 # todo research -fno-plt
-cflags=-pipe -Ofast -flto -fshort-enums -march=native -mtune=native -msse -msse2 -msse4.2 -mavx -mavx2 -mmmx -funsafe-math-optimizations -ftree-vectorize -ffast-math -ftree-slp-vectorize -fassociative-math -fvisibility=hidden -fcompare-debug-second -fno-stack-protector -fno-math-errno -fno-ident -fno-asynchronous-unwind-tables -fno-exceptions -ffunction-sections -fdata-sections -Wl,-s,--gc-sections,--reduce-memory-overheads,--build-id=none -DNDEBUG
+#cflags=-static-libgcc -static-libstdc++ -static -pipe -Ofast -flto -fshort-enums -march=native -mtune=native -msse -msse2 -msse4.2 -mavx -mavx2 -mmmx -funsafe-math-optimizations -ftree-vectorize -ffast-math -ftree-slp-vectorize -fassociative-math -fvisibility=hidden -fcompare-debug-second -fno-stack-protector -fno-math-errno -fno-ident -fno-asynchronous-unwind-tables -fno-exceptions -ffunction-sections -fdata-sections -Wl,-s,--gc-sections,--reduce-memory-overheads,--build-id=none -DNDEBUG
 shutup=-w -std=gnu++17 -fpermissive -Wno-narrowing -Wno-unused-result -Wno-format
 
 rule cpp
 #  command = ccache distcc g++ -MD -MF $out.depends $cflags $shutup -o $out -c $in
-#  command = g++ -MD -MF $out.depends $cflags $shutup -o $out -c $in
-  command = ccache g++ -MD -MF $out.depends $cflags $shutup -o $out -c $in
+  command = g++ -MD -MF $out.depends $cflags $shutup -o $out -c $in
+#  command = ccache g++ -MD -MF $out.depends $cflags $shutup -o $out -c $in
   depfile = $out.depends
   description = cpp $out
 
 rule link
-  command = ccache g++ -o $out $cflags $in
+  command = g++ -o $out $cflags $in
   description = cpp $out
 
 build bin/main.o: cpp src/main.cpp
@@ -22,4 +22,5 @@ build bin/parser.o: cpp src/parser.cpp
 build bin/interpreter.o: cpp src/interpreter.cc
 build bin/nodeimpl.o: cpp src/nodeimpl.cxx
 build bin/extension_api.o: cpp src/extension_api.cc
-build a.exe: link bin/lexer.o bin/parser.o bin/nodeimpl.o bin/interpreter.o bin/extension_api.o bin/main.o
+build bin/win.o: cpp src/win.cc
+build a.exe: link bin/lexer.o bin/parser.o bin/nodeimpl.o bin/interpreter.o bin/extension_api.o bin/main.o bin/win.o

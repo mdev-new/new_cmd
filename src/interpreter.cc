@@ -1,8 +1,10 @@
 #include "interpreter.hh"
 #include "shared.hh"
 #include <unistd.h>
+#include <cstdio>
 #include <cstring>
 #include <climits>
+#include "win.hh"
 
 // optimize as much as possible
 
@@ -48,6 +50,7 @@ IFUN(doCall) {
 	return 0;
 }
 
+// only absolute paths atm, sorry
 IFUN(doChdir) {
 	chdir(TCAST(StringNode *, callParams.params[0])->str);
 	return 0;
@@ -60,16 +63,15 @@ IFUN(doCls) {
 	GetConsoleScreenBufferInfo(handle, &ConsoleScreenInfo);
 
 	SMALL_RECT ScrollRect = {
-		.Top = 0,
 		.Left = 0,
-		.Bottom = ConsoleScreenInfo.dwSize.Y,
-		.Right =  ConsoleScreenInfo.dwSize.X
+		.Top = 0,
+		.Right =  ConsoleScreenInfo.dwSize.X,
+		.Bottom = ConsoleScreenInfo.dwSize.Y
 	};
 
-	CHAR_INFO chinfo = {
-		.Char.AsciiChar = ' ',
-		.Attributes = ConsoleScreenInfo.wAttributes
-	};
+	CHAR_INFO chinfo;
+	chinfo.Char.AsciiChar = ' ';
+	chinfo.Attributes = ConsoleScreenInfo.wAttributes;
 
 	ScrollConsoleScreenBuffer(handle, &ScrollRect, NULL, { 0, (SHORT)(0 - ConsoleScreenInfo.dwSize.Y) }, &chinfo);
 	SetConsoleCursorPosition(/*GetStdHandle(STD_OUTPUT_HANDLE)*/handle, {0, 0});
@@ -99,9 +101,20 @@ IFUN(doSetlocal) {
 	return 0;
 }
 
+int hexValToDec(int hex) {
+	int a = 0, ret = 0;
+	do
+		ret = ret * 10 + (hex << a++);
+	while(hex && (hex /= 10));
+	return ret;
+}
+
 IFUN(doColor) {
 #ifdef _WIN64
-	WORD color = strtol(TCAST(StringNode *, callParams.params[0])->str, NULL, 16);
+	WORD color = 0x70;
+
+	if(callParams.params[0]->type == LN(LNODE_NUMBER)) color = hexValToDec(TCAST(NumberNode *, callParams.params[0])->num);
+	else color = strtol(TCAST(StringNode *, callParams.params[0])->str, NULL, 16);
 
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
 	DWORD dwWritten;
@@ -172,7 +185,8 @@ IFUN(doPause) {
 	printf("Press any key to continue...");
 
 	FlushConsoleInputBuffer(GetStdHandle(STD_INPUT_HANDLE));
-	_getch();
+	getch();
+	printf("\n");
 
 #endif
 	return 0;

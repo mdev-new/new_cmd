@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
+#include "win.hh"
 
 #define mkstringify(x, z) std::pair<const char *, char *> x::stringify() { return std::make_pair(#x, z); };
 

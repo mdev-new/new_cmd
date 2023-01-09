@@ -1,7 +1,6 @@
 #include "shared.hh"
 #ifdef _WIN64
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
+#include "win.hh"
 
 // todo expose node types
 #include "parser.hpp"
@@ -16,6 +15,7 @@
 #include <cstdio>
 
 typedef unsigned __int64 QWORD;
+extern void RegisterCommand(char *cmd, CallPtr func);
 
 enum {
   ERROR_NOT_CMDEXE = -2,
@@ -39,10 +39,10 @@ enum {
 
 typedef struct {
     PBYTE imageBase;
-    LPARAM reservedParam;
     HMODULE(WINAPI* loadLibraryA)(PCSTR);
     FARPROC(WINAPI* getProcAddress)(HMODULE, PCSTR);
     VOID(WINAPI* rtlZeroMemory)(PVOID, SIZE_T);
+    LPARAM reservedParam;
 } LoaderData;
 
 using EntryPointPtr = DWORD(__stdcall*)(HMODULE, DWORD, LPVOID);
@@ -86,7 +86,7 @@ QWORD WINAPI loadLibrary(LoaderData* loaderData) {
     }
 
     if (ntHeaders->OptionalHeader.AddressOfEntryPoint) {
-	EntryPointPtr epnt = (EntryPointPtr)(loaderData->imageBase + ntHeaders->OptionalHeader.AddressOfEntryPoint);
+	      EntryPointPtr epnt = (EntryPointPtr)(loaderData->imageBase + ntHeaders->OptionalHeader.AddressOfEntryPoint);
         QWORD result = epnt((HMODULE)loaderData->imageBase, DLL_PROCESS_ATTACH, loaderData->reservedParam);
 
         //loaderData->rtlZeroMemory(loaderData->imageBase + ntHeaders->OptionalHeader.AddressOfEntryPoint, 32);
@@ -96,35 +96,27 @@ QWORD WINAPI loadLibrary(LoaderData* loaderData) {
     return TRUE;
 }
 
-// only serves as a marker
-void stub(void) {}
-
 // todo error checking?
 INT HookDll(HANDLE hProcess, LPVOID dllcode, LPARAM lParam) {
   PIMAGE_NT_HEADERS ntHeaders = (PIMAGE_NT_HEADERS)(dllcode + ((PIMAGE_DOS_HEADER)dllcode)->e_lfanew);
-  PBYTE executableImage = VirtualAllocEx(hProcess, NULL, ntHeaders->OptionalHeader.SizeOfImage, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+  PBYTE executableImage = VirtualAlloc(NULL, ntHeaders->OptionalHeader.SizeOfImage, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
   if(executableImage == NULL) return ERROR_CANNOT_VIRTUAL_ALLOC;
-  if(WriteProcessMemory(hProcess, executableImage, dllcode, ntHeaders->OptionalHeader.SizeOfHeaders, NULL) == 0) return ERROR_CANNOT_WRITE_PROCESS_MEM;
+
+  memcpy(executableImage, dllcode, ntHeaders->OptionalHeader.SizeOfHeaders);
 
   PIMAGE_SECTION_HEADER sectionHeaders = (PIMAGE_SECTION_HEADER)(ntHeaders + 1);
   for (int i = 0; i < ntHeaders->FileHeader.NumberOfSections; i++)
-      if(WriteProcessMemory(hProcess, executableImage + sectionHeaders[i].VirtualAddress, dllcode + sectionHeaders[i].PointerToRawData, sectionHeaders[i].SizeOfRawData, NULL) == 0) return ERROR_CANNOT_WRITE_PROCESS_MEM;
-
-  LoaderData* loaderMemory = VirtualAllocEx(hProcess, NULL, 4096, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READ);
-  if(loaderMemory == NULL) return ERROR_CANNOT_VIRTUAL_ALLOC;
+    memcpy(executableImage + sectionHeaders[i].VirtualAddress, dllcode + sectionHeaders[i].PointerToRawData, sectionHeaders[i].SizeOfRawData);
 
   LoaderData loaderParams = {
     .imageBase = executableImage,
-    .reservedParam = lParam? lParam : NULL,
     .loadLibraryA = GetProcAddress(GetModuleHandle("kernel32.dll"), "LoadLibraryA"),
-    .getProcAddress = GetProcAddress,
-    .rtlZeroMemory = (VOID(NTAPI*)(PVOID, SIZE_T))GetProcAddress(GetModuleHandle("ntdll.dll"), "RtlZeroMemory")
+    .getProcAddress = GetProcAddress(GetModuleHandle("kernel32.dll"), "GetProcAddress"),
+    .rtlZeroMemory = (VOID(NTAPI*)(PVOID, SIZE_T))GetProcAddress(GetModuleHandle("ntdll.dll"), "RtlZeroMemory"),
+    .reservedParam = lParam
   };
 
-  if(WriteProcessMemory(hProcess, loaderMemory, &loaderParams, sizeof(LoaderData), NULL) == 0) return ERROR_CANNOT_WRITE_PROCESS_MEM;
-  if(WriteProcessMemory(hProcess, loaderMemory + 1, loadLibrary, (QWORD)stub - (QWORD)loadLibrary, NULL) == 0) return ERROR_CANNOT_WRITE_PROCESS_MEM;
-  WaitForSingleObject(CreateRemoteThread(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)(loaderMemory + 1), loaderMemory, 0, NULL), INFINITE);
-  if(!VirtualFreeEx(hProcess, loaderMemory, 0, MEM_RELEASE)) return ERROR_CANNOT_VIRTUAL_FREE;
+  loadLibrary(&loaderParams);
 }
 
 IFUN(doInject) {
@@ -133,8 +125,7 @@ IFUN(doInject) {
 	if(param0->type != MKNTYP(NODE_LEAF, LNODE_STRING)) return -1;
 
 	char *dllname = TCAST(StringNode*, param0)->str;
-	HANDLE hProc = OpenProcess(PROCESS_ALL_ACCESS, TRUE, GetCurrentProcessId());
-	// todo error check
+	HANDLE hProc = OpenProcess(PROCESS_ALL_ACCESS, FALSE, GetCurrentProcessId());
 
 	FILE *fp = fopen(dllname, "rb");
 	fseek(fp, 0, SEEK_END);
@@ -158,24 +149,26 @@ IFUN(doInject) {
 		HookDll(hProc, decompBuffer, (LONG_PTR)RegisterCommand); 
 		free(decompBuffer);
 		break;
-	}
+	} break;
 	case ALGO_DEFLATE: {
 		char *decompBuffer = malloc(header->uncompressed_file_size);
 		// todo error check
 
-		int decomp = sinflate(decompBuffer, header->uncompressed_file_size+1, buffer+header->sizeOfSelf, size-header->sizeOfSelf);
+		int decomp = sinfl_decompress(decompBuffer, header->uncompressed_file_size+1, buffer+header->sizeOfSelf, size-header->sizeOfSelf);
 		// todo error check
 
 		// todo error check
 		HookDll(hProc, decompBuffer, (LONG_PTR)RegisterCommand);
+    printf("extension sucessful!\n");
 		free(decompBuffer);
 		break;
-	}
+	} break;
+	default: break;
 	}
 
 	free(buffer);
-	CloseHandle(hProc);
 	return 0;
+
 }
 
 #endif
