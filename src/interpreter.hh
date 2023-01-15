@@ -1,7 +1,4 @@
 #pragma once
-#include <unordered_map>
-#include <utility>
-#include <stack>
 #include "nodes.hh"
 #include "shared.hh"
 #include "parser.hpp"
@@ -14,7 +11,7 @@ class Interpreter {
 		.extensions = true,
 		.delayedExpansion = false,
 		.echo = true,
-		.filepos = 0,
+		.filepos = 0
 	};
 
 public:

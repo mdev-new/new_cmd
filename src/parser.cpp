@@ -10,6 +10,9 @@
 #include <memory>
 #include <algorithm>
 #include <unordered_set>
+#include <cstring>
+#include "shared.hh"
+#include "nodes.hh"
 
 #define TCAST(type, val) ((type)val)
 
@@ -19,13 +22,14 @@ template <typename t> void move(std::vector<t>& v, size_t oldIndex, size_t newIn
 	else std::rotate(v.begin() + oldIndex, v.begin() + oldIndex + 1, v.begin() + newIndex + 1);
 }
 
-static std::unordered_set<int> command_terminators = {TOK_PIPE, TOK_AND, TOK_LT, TOK_GT, TOK_SPACE, TOK_EOF};
+static std::unordered_set<int> command_terminators = {TOK_PIPE, TOK_AND, TOK_PIPEIN, TOK_PIPEOUT, TOK_SPACE, TOK_EOF};
 
+// stage 2 lexer basically
 int SortTokens(std::vector<Token> &tokens, int start, int breaktok) {
 	Token current = tokens[start], last = current;
 	long i = start, skip = 0, parenStart = 0;
 
-	for(; breaktok? (current.type != breaktok && i < tokens.size()) : (i < tokens.size()); i+=skip, skip=1) {
+	for(; breaktok? (current.type != breaktok && i < tokens.size()-1) : (i < tokens.size()-1); i+=skip, skip=1) {
 		current = tokens[i];
 
 		if(current.type == TOK_LEFTPAREN) {
@@ -42,6 +46,24 @@ int SortTokens(std::vector<Token> &tokens, int start, int breaktok) {
 
 		if((last.type == TOK_NUMBER) && current.type >= TOK_PLUS && current.type <= TOK_SLASH) {
 			std::swap(tokens[i], tokens[i-1]);
+		}
+
+		if(last.type == TOK_EQUALS && current.type == TOK_EQUALS) {
+			tokens.erase(tokens.begin() + i-1);
+			tokens[i-1] = (Token){TOK_DEQUAL, 0, 0};
+			std::swap(tokens[i-1], tokens[i-2]);
+			continue;
+		}
+
+		switch(current.type) {
+		case TOK_GTR:
+		case TOK_LSS:
+		case TOK_GEQ:
+		case TOK_LEQ:
+		case TOK_EQU:
+		case TOK_NEQ:
+			std::swap(tokens[i], tokens[i-1]);
+		default: break;
 		}
 
 		// todo reduce multiple consecutive slashes
@@ -66,29 +88,29 @@ int SortTokens(std::vector<Token> &tokens, int start, int breaktok) {
 	return i;
 }
 
-std::pair<int, Node*> makeNode(std::vector<Token> tokens, int i) {
+std::pair<int, Node*> makeNode(std::vector<Token> tokens, int i, int level) {
 	switch(tokens[i].type) {
 	case TOK_PLUS: {
-		auto [lskip, lhs] = makeNode(tokens, i+1);
-		auto [rskip, rhs] = makeNode(tokens, i+2);
+		auto [lskip, lhs] = makeNode(tokens, i+1, level+1);
+		auto [rskip, rhs] = makeNode(tokens, i+2, level+1);
 		return std::make_pair(lskip+rskip+1, new AdditionNode(lhs, rhs));
 	}
 
 	case TOK_MINUS: {
-		auto [lskip, lhs] = makeNode(tokens, i+1);
-		auto [rskip, rhs] = makeNode(tokens, i+2);
+		auto [lskip, lhs] = makeNode(tokens, i+1, level+1);
+		auto [rskip, rhs] = makeNode(tokens, i+2, level+1);
 		return std::make_pair(lskip+rskip+1, new SubtractionNode(lhs, rhs));
 	}
 
 	case TOK_ASTERISK: {
-		auto [lskip, lhs] = makeNode(tokens, i+1);
-		auto [rskip, rhs] = makeNode(tokens, i+2);
+		auto [lskip, lhs] = makeNode(tokens, i+1, level+1);
+		auto [rskip, rhs] = makeNode(tokens, i+2, level+1);
 		return std::make_pair(lskip+rskip+1, new MultiplicationNode(lhs, rhs));
 	}
 
 	case TOK_SLASH: {
-		auto [lskip, lhs] = makeNode(tokens, i+1);
-		auto [rskip, rhs] = makeNode(tokens, i+2);
+		auto [lskip, lhs] = makeNode(tokens, i+1, level+1);
+		auto [rskip, rhs] = makeNode(tokens, i+2, level+1);
 		return std::make_pair(lskip+rskip+1, new DivisionNode(lhs, rhs));
 	}
 
@@ -96,7 +118,7 @@ std::pair<int, Node*> makeNode(std::vector<Token> tokens, int i) {
 		int j, skip = 1;
 		ParenthesesNode *n = new ParenthesesNode();
 		for(j = i+1; tokens[j].type != TOK_RIGHTPAREN; j+=skip, skip=1) {
-			auto [ss, nn] = makeNode(tokens, j);
+			auto [ss, nn] = makeNode(tokens, j, 0);
 			n->append(nn);
 			skip = ss;
 		}
@@ -110,23 +132,73 @@ std::pair<int, Node*> makeNode(std::vector<Token> tokens, int i) {
 
 	case TOK_EQUALS: {
 		// todo support multiple assignments (for example a=b=c=0)
-		auto [lskip, lhs] = makeNode(tokens, i+1);
-		auto [rskip, rhs] = makeNode(tokens, i+2);
+		auto [lskip, lhs] = makeNode(tokens, i+1, level+1);
+		auto [rskip, rhs] = makeNode(tokens, i+2, level+1);
 		return std::make_pair(lskip+rskip+1, new AssignNode(lhs, rhs));
 	}
 
-	case TOK_ID: return std::make_pair(1, new IdNode((char*)tokens[i].value));
+	case TOK_LSS: {
+		auto [lskip, lhs] = makeNode(tokens, i+1, level+1);
+		auto [rskip, rhs] = makeNode(tokens, i+2, level+1);
+		return std::make_pair(lskip+rskip+1, new CompareNode(lhs, rhs, CompareNode::CompareType::LSS));
+	}
+
+	case TOK_LEQ: {
+		auto [lskip, lhs] = makeNode(tokens, i+1, level+1);
+		auto [rskip, rhs] = makeNode(tokens, i+2, level+1);
+		return std::make_pair(lskip+rskip+1, new CompareNode(lhs, rhs, CompareNode::CompareType::LEQ));
+	}
+
+	case TOK_GTR: {
+		auto [lskip, lhs] = makeNode(tokens, i+1, level+1);
+		auto [rskip, rhs] = makeNode(tokens, i+2, level+1);
+		return std::make_pair(lskip+rskip+1, new CompareNode(lhs, rhs, CompareNode::CompareType::GTR));
+	}
+
+	case TOK_GEQ: {
+		auto [lskip, lhs] = makeNode(tokens, i+1, level+1);
+		auto [rskip, rhs] = makeNode(tokens, i+2, level+1);
+		return std::make_pair(lskip+rskip+1, new CompareNode(lhs, rhs, CompareNode::CompareType::GEQ));
+	}
+
+	case TOK_EQU: {
+		auto [lskip, lhs] = makeNode(tokens, i+1, level+1);
+		auto [rskip, rhs] = makeNode(tokens, i+2, level+1);
+		return std::make_pair(lskip+rskip+1, new CompareNode(lhs, rhs, CompareNode::CompareType::EQU));
+	}
+
+	case TOK_NEQ: {
+		auto [lskip, lhs] = makeNode(tokens, i+1, level+1);
+		auto [rskip, rhs] = makeNode(tokens, i+2, level+1);
+		return std::make_pair(lskip+rskip+1, new CompareNode(lhs, rhs, CompareNode::CompareType::NEQ));
+	}
+
+	// case TOK_DEQUAL: {
+	// 	break;
+	// }
+
+	case TOK_FOR: {
+	}
+
+	case TOK_IF: {
+	}
+
 	case TOK_STRING: return std::make_pair(1, new StringNode((char*)tokens[i].value));
 	case TOK_SWITCH: return std::make_pair(1, new SwitchNode((char*)tokens[i].value, tokens[i].additionalData));
 	case TOK_LABEL: return std::make_pair(1, new LabelNode((char*)tokens[i].value, i-1));
 
+	case TOK_ID:
+		if(level != 0) { return std::make_pair(1, new IdNode((char*)tokens[i].value)); break; }
+		// fallthrough
 	case TOK_BUILTIN: {
 		int _i = i+1, skip = 1;
 
 		std::vector<Node *> args;
 
+		bool isCall = strcmp(tokens[i].value, "call") == 0 || strcmp(tokens[i].value, "start") == 0; // lets avoid headaches caused by reparsing that line later on :)
+
 		for(; command_terminators.count(tokens[_i].type) == 0 && _i < tokens.size(); _i+=skip, skip = 1) {
-			auto [skp, nod] = makeNode(tokens, _i);
+			auto [skp, nod] = makeNode(tokens, _i, isCall? 0 : 1);
 			if(nod != nullptr) {
 				args.push_back(nod);
 				skip = skp;
@@ -134,7 +206,8 @@ std::pair<int, Node*> makeNode(std::vector<Token> tokens, int i) {
 			else delete nod;
 		}
 
-		return std::make_pair(_i-i, new CallNode((char*)tokens[i].value, args, tokens[i-1].type == TOK_AT));
+		if(tokens.size() >= i-1) return std::make_pair(_i-i, new CallNode((char*)tokens[i].value, args, tokens[i-1].type == TOK_AT));
+		else return std::make_pair(_i-i, new CallNode((char*)tokens[i].value, args));
 	}
 
 	default: return std::make_pair(1, nullptr);
@@ -144,10 +217,10 @@ std::pair<int, Node*> makeNode(std::vector<Token> tokens, int i) {
 Parser::Parser(char *buffer, size_t length)
  : lexer(buffer, length)
 {
+	this->tokens = lexer.lexBuffer();
 }
 
 void Parser::parse() {
-	std::vector<Token> tokens = lexer.lexBuffer();
 	int i, skip;
 
 	SortTokens(tokens, 0, 0);
@@ -155,7 +228,7 @@ void Parser::parse() {
 	//for(int x = 0; x < tokens.size()-1; x++) printf("%d\n", tokens[x].type);
 
 	for(i = 0, skip = 1; i < tokens.size()-1; i+=skip, skip = 1) {
-		auto [_skip, _node] = makeNode(tokens, i);
+		auto [_skip, _node] = makeNode(tokens, i, 0);
 		if(_node == nullptr) continue;
 		this->nodes.push_back(_node);
 		skip = _skip;

@@ -1,16 +1,18 @@
 #pragma once
 #include <cstdint>
 #include <unordered_map>
-#include <unordered_map>
-#include <stack>
 #include "nodes.hh"
 
 struct Hasher {
 	size_t operator()(const size_t &h) const { return h; }
 };
 
-[[gnu::noinline]] constexpr uint64_t hash64(const char *text);
-[[gnu::noinline]] constexpr uint32_t hash32(const char* data);
+[[gnu::noinline]] constexpr uint32_t fnvhash(char const* str, bool removeCases = false);
+consteval uint32_t consthash(char const* s);
+
+//todo move
+#define _hashfunc_ fnvhash
+#define _hashtype_ uint32_t
 
 #define TCAST(type, val) ((type)val)
 #define MKNTYP(T, ST) (T | (ST << 1))

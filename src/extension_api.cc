@@ -1,5 +1,5 @@
-#include "shared.hh"
 #ifdef _WIN64
+#include "shared.hh"
 #include "win.hh"
 
 // todo expose node types
@@ -67,13 +67,13 @@ QWORD WINAPI loadLibrary(LoaderData* loaderData) {
         PIMAGE_THUNK_DATA originalFirstThunk = (PIMAGE_THUNK_DATA)(loaderData->imageBase + importDirectory->OriginalFirstThunk);
         PIMAGE_THUNK_DATA firstThunk = (PIMAGE_THUNK_DATA)(loaderData->imageBase + importDirectory->FirstThunk);
 
-        HMODULE module = loaderData->loadLibraryA((LPCSTR)loaderData->imageBase + importDirectory->Name);
+        HMODULE module = LoadLibraryA((LPCSTR)loaderData->imageBase + importDirectory->Name);
 
         if (!module)
             return FALSE;
 
         while (originalFirstThunk->u1.AddressOfData) {
-            QWORD Function = (QWORD)loaderData->getProcAddress(module, originalFirstThunk->u1.Ordinal & IMAGE_ORDINAL_FLAG ? (LPCSTR)(originalFirstThunk->u1.Ordinal & 0xFFFF) : ((PIMAGE_IMPORT_BY_NAME)((LPBYTE)loaderData->imageBase + originalFirstThunk->u1.AddressOfData))->Name);
+            QWORD Function = (QWORD)GetProcAddress(module, originalFirstThunk->u1.Ordinal & IMAGE_ORDINAL_FLAG ? (LPCSTR)(originalFirstThunk->u1.Ordinal & 0xFFFF) : ((PIMAGE_IMPORT_BY_NAME)((LPBYTE)loaderData->imageBase + originalFirstThunk->u1.AddressOfData))->Name);
 
             if (!Function)
                 return FALSE;
@@ -86,12 +86,12 @@ QWORD WINAPI loadLibrary(LoaderData* loaderData) {
     }
 
     if (ntHeaders->OptionalHeader.AddressOfEntryPoint) {
-	      EntryPointPtr epnt = (EntryPointPtr)(loaderData->imageBase + ntHeaders->OptionalHeader.AddressOfEntryPoint);
-        QWORD result = epnt((HMODULE)loaderData->imageBase, DLL_PROCESS_ATTACH, loaderData->reservedParam);
+      EntryPointPtr epnt = (EntryPointPtr)(loaderData->imageBase + ntHeaders->OptionalHeader.AddressOfEntryPoint);
+      QWORD result = epnt((HMODULE)loaderData->imageBase, DLL_PROCESS_ATTACH, loaderData->reservedParam);
 
-        //loaderData->rtlZeroMemory(loaderData->imageBase + ntHeaders->OptionalHeader.AddressOfEntryPoint, 32);
-        loaderData->rtlZeroMemory(loaderData->imageBase, ntHeaders->OptionalHeader.SizeOfHeaders);
-        return result;
+      //loaderData->rtlZeroMemory(loaderData->imageBase + ntHeaders->OptionalHeader.AddressOfEntryPoint, 32);
+      loaderData->rtlZeroMemory(loaderData->imageBase, ntHeaders->OptionalHeader.SizeOfHeaders);
+      return result;
     }
     return TRUE;
 }
@@ -117,11 +117,11 @@ INT HookDll(HANDLE hProcess, LPVOID dllcode, LPARAM lParam) {
   };
 
   loadLibrary(&loaderParams);
+  return 0;
 }
 
 IFUN(doInject) {
-	Node **parameters = callParams.params;
-	Node *param0 = parameters[0];
+	Node *param0 = callParams.params[0];
 	if(param0->type != MKNTYP(NODE_LEAF, LNODE_STRING)) return -1;
 
 	char *dllname = TCAST(StringNode*, param0)->str;

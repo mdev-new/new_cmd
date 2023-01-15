@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstring>
 #include <climits>
+#include <cstdlib>
 #include "win.hh"
 
 // optimize as much as possible
@@ -12,26 +13,23 @@
 // do not rely as much on stdlib
 
 #define IFUN(name) int name(CallParams callParams)
-#define fe(x,y,z) {_hashfunc_(x), std::make_pair(y,z)},
 
-[[gnu::noinline]] constexpr uint64_t hash64(const char *text) {
-	uint64_t h = 525201411107845655ull, i = 0;
-	while (text[i++]) {
-		h = (h ^ text[i]) * 0x5bd1e9955bd1e995;
-		h ^= h >> 47;
-	}
-	return h;
-}
-
-[[gnu::noinline]] constexpr uint32_t hash32(const char* data) {
-	uint32_t h = 3323198485ul, i = 0;
+[[gnu::noinline]] constexpr uint32_t fnvhash(char const* str, bool removeCases = false) {
+	uint32_t hash = 0, i = 0;
 	char c = 0;
-	while (c = data[i++]) {
-		h ^= c * 0x5bd1e995;
-		h ^= h >> 15;
+	while(c = str[i]) {
+		if(removeCases && 'A' <= c && c <= 'Z') c += 'a' - 'A';
+		hash = (hash * 0x811C9DC5) ^ c;
+		i++;
 	}
-	return h;
+	return hash;
 }
+
+consteval uint32_t consthash(char const* s) {
+	return fnvhash(s);
+}
+
+#define fe(x,y,z) {consthash(x), { y,z } },
 
 // -- HIGH PRIORITY --
 // todo finish implementation
@@ -75,6 +73,8 @@ IFUN(doCls) {
 
 	ScrollConsoleScreenBuffer(handle, &ScrollRect, NULL, { 0, (SHORT)(0 - ConsoleScreenInfo.dwSize.Y) }, &chinfo);
 	SetConsoleCursorPosition(/*GetStdHandle(STD_OUTPUT_HANDLE)*/handle, {0, 0});
+#else
+	printf("\e[1;1H\e[2J");
 #endif
 	return 0;
 }
@@ -103,19 +103,20 @@ IFUN(doSetlocal) {
 
 int hexValToDec(int hex) {
 	int a = 0, ret = 0;
-	do
-		ret = ret * 10 + (hex << a++);
+	do ret = ret * 10 + (hex << a++);
 	while(hex && (hex /= 10));
 	return ret;
 }
 
 IFUN(doColor) {
+	unsigned char color = 0x0F;
+
+	if(callParams.noParams != 0) {
+		if(callParams.params[0]->type == LN(LNODE_NUMBER)) color = TCAST(NumberNode *, callParams.params[0])->num;
+		else color = strtol(TCAST(IdNode *, callParams.params[0])->str, NULL, 16);
+	}
+
 #ifdef _WIN64
-	WORD color = 0x70;
-
-	if(callParams.params[0]->type == LN(LNODE_NUMBER)) color = hexValToDec(TCAST(NumberNode *, callParams.params[0])->num);
-	else color = strtol(TCAST(StringNode *, callParams.params[0])->str, NULL, 16);
-
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
 	DWORD dwWritten;
 
@@ -127,7 +128,14 @@ IFUN(doColor) {
 	}
 
 	return 1;
-
+#else
+	#warning "doColor needs testing"
+	const static short mapping[] = {
+		0x30, 0x34, 0x32, 0x36, 0x31, 0x35, 0x33, 0x37,
+		0x90, 0x94, 0x92, 0x96, 0x91, 0x95, 0x93, 0x97
+	};
+	//printf("setting color: bg: %x fg: %x\n", mapping[color >> 4] + 0x10, mapping[color & 0xF] & 0xFF);
+	printf("\x1B[0;%x;%xm", mapping[color >> 4] + 0x10, mapping[color & 0xF] & 0xFF);
 #endif
 	return 0;
 }
@@ -198,8 +206,9 @@ IFUN(doShift) {
 
 IFUN(doTitle) {
 #ifdef _WIN64
-	// this will NOT work
 	SetConsoleTitleA(TCAST(StringNode *, callParams.params[0])->str);
+#else
+	printf("\033]0;%s\007",TCAST(StringNode *, callParams.params[0])->str); 
 #endif
 	return 0;
 }
@@ -228,10 +237,27 @@ IFUN(doType) {
 }
 
 IFUN(doPushd) {
-	char fullpath[PATH_MAX] = {0};
-	realpath(TCAST(StringNode *, callParams.params[0])->str, fullpath);
-	callParams.state->directoryStack.push(strdup(fullpath));
-	chdir(fullpath);
+	char *arg = TCAST(StringNode *, callParams.params[0])->str;
+
+#ifdef _WIN64
+	bool isFullPath = arg[1] == ':' || arg[0] == '\\';
+#else
+	bool isFullPath = arg[0] == '/';
+#endif
+
+	if(isFullPath) {
+		callParams.state->directoryStack.push(strdup(arg));
+		chdir(arg);
+	} else {
+		char dir[PATH_MAX] = {0};
+		getcwd(dir, sizeof(dir));
+		strcat(dir, "/");
+		strcat(dir, arg);
+
+		callParams.state->directoryStack.push(strdup(dir));
+		chdir(dir);
+	}
+
 	return 0;
 }
 
@@ -316,6 +342,13 @@ std::unordered_map<_hashtype_, std::pair<uint8_t, CallPtr>, Hasher> multicharMap
 	fe("for", TOK_FOR, nullptr)
 	fe("if", TOK_IF, nullptr)
 
+	fe("gtr", TOK_GTR, nullptr)
+	fe("geq", TOK_GEQ, nullptr)
+	fe("lss", TOK_LSS, nullptr)
+	fe("leq", TOK_LEQ, nullptr)
+	fe("equ", TOK_EQU, nullptr)
+	fe("neq", TOK_NEQ, nullptr)
+
 	fe("call", TOK_BUILTIN, doCall)
 	fe("cd", TOK_BUILTIN, doChdir)
 	fe("chdir", TOK_BUILTIN, doChdir)
@@ -386,6 +419,12 @@ Interpreter::Interpreter(char *buffer, size_t size)
 extern char *itoa_(int i);
 
 int Interpreter::interpret() {
+	for(Node *n : this->nodes) {
+		if(n->type == LN(LNODE_LABEL)) {
+			LabelNode *ln = n;
+			ln->_register_(&this->state);
+		}
+	}
 
 	// loop over root nodes
 	Node *current;
@@ -394,15 +433,10 @@ int Interpreter::interpret() {
 		current = nodes[this->state.filepos];
 		switch(current->type) {
 		case LN(LNODE_CALL): {
-			auto retcode = TCAST(CallNode*, current)->execute(&this->state);
+			auto retcode = TCAST(CallNode*, current)->evaluate(&this->state);
 			setenv("errorlevel", itoa_(retcode), true);
 			break;
 		};
-
-		case LN(LNODE_LABEL): {
-			TCAST(LabelNode *, current)->_register_(&this->state);
-			break;
-		}
 		}
 	}
 

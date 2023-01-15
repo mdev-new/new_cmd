@@ -1,19 +1,19 @@
-cflags=-Og -ggdb3 -static -static-libgcc -static-libstdc++
+cflags=-Og -ggdb3 -fsanitize=address -static-libgcc -static-libstdc++
 
 #-static-libgcc -static-libstdc++ # make things a tiny bit faster at the expense of size
 # todo research -fno-plt
 #cflags=-static-libgcc -static-libstdc++ -static -pipe -Ofast -flto -fshort-enums -march=native -mtune=native -msse -msse2 -msse4.2 -mavx -mavx2 -mmmx -funsafe-math-optimizations -ftree-vectorize -ffast-math -ftree-slp-vectorize -fassociative-math -fvisibility=hidden -fcompare-debug-second -fno-stack-protector -fno-math-errno -fno-ident -fno-asynchronous-unwind-tables -fno-exceptions -ffunction-sections -fdata-sections -Wl,-s,--gc-sections,--reduce-memory-overheads,--build-id=none -DNDEBUG
-shutup=-w -std=gnu++17 -fpermissive -Wno-narrowing -Wno-unused-result -Wno-format
+shutup=-w -std=gnu++20 -fpermissive -Wno-narrowing -Wno-unused-result -Wno-format
+
+cc = ccache g++
 
 rule cpp
-#  command = ccache distcc g++ -MD -MF $out.depends $cflags $shutup -o $out -c $in
-  command = g++ -MD -MF $out.depends $cflags $shutup -o $out -c $in
-#  command = ccache g++ -MD -MF $out.depends $cflags $shutup -o $out -c $in
+  command = $cc -MD -MF $out.depends $cflags $shutup -o $out -c $in
   depfile = $out.depends
   description = cpp $out
 
 rule link
-  command = g++ -o $out $cflags $in
+  command = $cc -o $out $cflags $in
   description = cpp $out
 
 build bin/main.o: cpp src/main.cpp

@@ -22,12 +22,13 @@ Lexer::Lexer(uint8_t *buffer, size_t size)
 
 Token Lexer::get() {
 	// i guess table could also work for simple tokens
-	#define ReturnToken(x) idx++; return (Token){x, 0, 0, idx-1, 1}
+#define ReturnToken(x) idx++; return (Token){x, 0, 0, idx-1, 1}
+
 	switch(buffer[idx]) {
 	case '(': ReturnToken(TOK_LEFTPAREN);
 	case ')': ReturnToken(TOK_RIGHTPAREN);
-	case '<': ReturnToken(TOK_LT);
-	case '>': ReturnToken(TOK_GT);
+	case '<': ReturnToken(TOK_PIPEIN);
+	case '>': ReturnToken(TOK_PIPEOUT);
 	case '=': ReturnToken(TOK_EQUALS);
 	case '+': ReturnToken(TOK_PLUS);
 	case '-': ReturnToken(TOK_MINUS);
@@ -47,7 +48,7 @@ Token Lexer::get() {
 		char x = buffer[idx++];
 		size_t orig_idx = idx;
 		while(buffer[idx++] != x);
-		return (Token){TOK_STRING, strndup(&buffer[orig_idx], idx-1-orig_idx), idx-1-orig_idx, orig_idx-1, idx-orig_idx+1};
+		return (Token){(buffer[orig_idx-1] == '"')? TOK_STRING : TOK_SINGLEQUOTESTRING, strndup(&buffer[orig_idx], idx-1-orig_idx), idx-1-orig_idx, orig_idx-1, idx-orig_idx+1};
 	}
 	case '\n': ReturnToken(TOK_SPACE);
 	default: break;
@@ -56,8 +57,11 @@ Token Lexer::get() {
 	if(isdigit(buffer[idx])) {
 		int num = 0;
 		size_t orig_idx = idx;
-		while(isdigit(buffer[idx])) {
-			num = num * 10 + buffer[idx] - '0';
+		while(isdigit(buffer[idx]) || isxdigit(buffer[idx])) {
+			if(isxdigit(buffer[idx]))
+				num = num * 10 + (10 + buffer[idx] - (islxdigit(buffer[idx])? 'a' : 'A'));
+			else
+				num = num * 10 + buffer[idx] - '0';
 			idx++;
 		}
 		return (Token){TOK_NUMBER, num, 0, orig_idx, idx-orig_idx};

@@ -4,14 +4,14 @@
 #include <cstddef>
 #include <vector>
 #include <stack>
+#include <functional>
 
 // NOTE TO SELF: This doubles down as public API
 // so even tho i don't like the placement of things here they have to stay \_(ツ)_/
 
-#define stringifyfun std::pair<const char *, char *> stringify() override
+// todo throw all this into an namespace
 
-#define _hashfunc_(x) hash32(x)
-#define _hashtype_ uint32_t
+#define stringifyfun std::pair<const char *, char *> stringify() override
 
 #define IFUN(name) int name(CallParams callParams)
 
@@ -24,6 +24,9 @@ enum InnerNodeType {
 	INODE_PARENTHESES,
 	INODE_BINOP,
 	INODE_ASSIGN,
+	INODE_COMPARE,
+	INODE_IF,
+	INODE_FOR
 };
 
 enum LeafNodeType {
@@ -41,6 +44,11 @@ struct Token;
 struct Node {
 	char type;
 	virtual std::pair<const char *, char *> stringify() = 0;
+
+	char *srcStart, *srcEnd;
+	Node(char type, char *start, char *end);
+
+	typedef Node super;
 };
 
 struct LeafNode : public Node {
@@ -48,6 +56,9 @@ struct LeafNode : public Node {
 		char *str;
 		int num;
 	};
+
+	using Node::Node;
+	typedef LeafNode super;
 };
 
 struct InnerNode : public Node {
@@ -55,6 +66,15 @@ struct InnerNode : public Node {
 		struct { Node **children; int childrenCount; };
 		struct { Node *lhs; Node *rhs; };
 	};
+
+	using Node::Node;
+	typedef InnerNode super;
+};
+
+template<typename T, class... types>
+struct Evaluatable {
+	virtual T evaluate(types... args) = 0;
+	typedef T evaltype;
 };
 
 struct NumberNode final : public LeafNode {
@@ -64,8 +84,9 @@ struct NumberNode final : public LeafNode {
 };
 
 struct StringNode : public LeafNode {
-	StringNode(char *s);
+	StringNode(char *s, bool singlequote = false);
 	char *evaluate();
+	bool singlequote = false;
 	stringifyfun;
 };
 
@@ -80,41 +101,41 @@ struct SwitchNode final : public StringNode {
 	stringifyfun;
 };
 
-struct ParenthesesNode : public InnerNode {
+struct ParenthesesNode : public InnerNode, public Evaluatable<int, InterpreterState*> {
 	int threshold = 16;
 
 	explicit ParenthesesNode();
 	void append(Node *n);
-	int evaluate();
+	evaltype evaluate(InterpreterState *state);
 	stringifyfun;
 };
 
-struct BinOpNode : public InnerNode {
+struct BinOpNode : public InnerNode, public Evaluatable<int> {
 	explicit BinOpNode(Node *lhs, Node *rhs);
-	virtual int evaluate() = 0;
+	typedef BinOpNode super;
 };
 
 struct AdditionNode final : public BinOpNode {
 	using BinOpNode::BinOpNode;
-	int evaluate() override;
+	evaltype evaluate() override;
 	stringifyfun;
 };
 
 struct SubtractionNode final : public BinOpNode {
 	using BinOpNode::BinOpNode;
-	int evaluate() override;
+	evaltype evaluate() override;
 	stringifyfun;
 };
 
 struct MultiplicationNode final : public BinOpNode {
 	using BinOpNode::BinOpNode;
-	int evaluate() override;
+	evaltype evaluate() override;
 	stringifyfun;
 };
 
 struct DivisionNode final : public BinOpNode {
 	using BinOpNode::BinOpNode;
-	int evaluate() override;
+	evaltype evaluate() override;
 	stringifyfun;
 };
 
@@ -127,13 +148,13 @@ struct EnvVarNode final : public Node {
 };
 
 // i have no idea how to implement this.
-struct CallNode final : public Node {
+struct CallNode final : public Node, public Evaluatable<int, InterpreterState*> {
 	char *funcName;
 	std::vector<Node *> args;
 	bool silent;
 
 	CallNode(char *name, std::vector<Node*> args, bool slient = false);
-	int execute(InterpreterState *state);
+	evaltype evaluate(InterpreterState *state);
 	stringifyfun;
 };
 
@@ -157,13 +178,78 @@ struct LabelNode final : public IdNode {
 	stringifyfun;
 };
 
+struct CompareNode final : public Node {
+	// kinda redundant
+	enum class CompareType {
+		GTR,
+		GEQ,
+		LSS,
+		LEQ,
+		EQU,
+		NEQ,
+		STRING
+	};
+
+	CompareNode(LeafNode *lhs, LeafNode *rhs, CompareType compareType, bool caseInsensitive = false);
+	bool evaluate();
+	stringifyfun;
+
+private:
+	bool caseInsensitive, invert;
+	CompareType cmpType;
+	LeafNode *lhs, *rhs;
+	std::function<bool(LeafNode *lhs, LeafNode *rhs)> cmpFunc;
+};
+
+struct ForNode final : public Node, public Evaluatable<int, InterpreterState *> {
+	// completely redundantant but whatever
+	enum class ForType {
+		FILES, // for
+		FILESROOTED, // for /r
+		FOLDERS, // for /d
+		NUMBERS, // for /l
+		FILECONTENTS, // for /f (file1 file2)
+		STRINGCONTENTS, // for /f ("string to process")
+		CMDRESULTS // for /f ('command to be ran')
+	} forType;
+
+	ForNode(char id, std::vector<Node*> params, Node *loopBody);
+	int evaluate(InterpreterState *state) override;
+	stringifyfun;
+
+private:
+	std::function<bool()> loopCond;
+	std::function<void()> inc;
+	Node *loopBody;
+	char id;
+
+	union {
+		struct { int start, step, end, current; } range;
+		struct { char *path, *filenameset; } filesrootedat;
+		struct { char **folders; } dirs;
+		struct { char *options, **filenames; int filenameCount; } files;
+		struct { char *options, *string; } string;
+		struct { char *options, *command; } commandoutput;
+	};
+};
+
+struct IfNode final : public Node, public Evaluatable<int, InterpreterState*> {
+	IfNode(CompareNode *cond, Node *ifBodyRoot, Node *elseBodyRoot = nullptr, bool invert = false, bool caseInsensitive = false);
+	evaltype evaluate(InterpreterState *state) override;
+	stringifyfun;
+
+private:
+	CompareNode *condition;
+	Node *sucess, *failure;
+};
+
 struct InterpreterState {
 	bool extensions;
 	bool delayedExpansion;
 	bool echo;
 	int filepos;
 
-	std::unordered_map<_hashtype_, int> labels;
+	std::unordered_map<uint32_t, int> labels;
 	std::stack<char*> directoryStack;
 	std::stack<std::unordered_map<char *, char *>> localEnvironments; //todo every call level recieves fresh one, so that means a stack of stacks?
 	char *buffer;

@@ -20,6 +20,8 @@
 #include <cstdlib>
 #include <cstring>
 
+#include <ctime>
+
 #include <unistd.h>
 
 #include "win.hh"
@@ -79,15 +81,17 @@ int main(int argc, char *argv[], char *envp[]) {
 
 	for(Node *n : intp.nodes) prettyPrint(0, n);
 
-	//struct timespec begin, end;
-	//clock_gettime(CLOCK_REALTIME, &begin);
+	int retncode = 0;
 
-	int retncode = intp.interpret();
+	struct timespec begin, end;
+	clock_gettime(CLOCK_REALTIME, &begin);
 
-	//clock_gettime(CLOCK_REALTIME, &end);
-	//double timetaken = (end.tv_sec - begin.tv_sec) + (end.tv_nsec - begin.tv_nsec)*1e-6;
-	//fprintf(stderr, "Interpreting took: %.3f ms\n", timetaken);
-	//fprintf(stderr, "Root nodes per second: %.f\n", intp.nodes.size() * (1000./timetaken));
+	retncode = intp.interpret();
+
+	clock_gettime(CLOCK_REALTIME, &end);
+	double timetaken = (end.tv_sec - begin.tv_sec) + (end.tv_nsec - begin.tv_nsec)*1e-6;
+	fprintf(stderr, "Interpreting took: %.3f ms\n", timetaken);
+	fprintf(stderr, "Root nodes per second: %.f\n", intp.nodes.size() * (1000./timetaken));
 
 	//printf("%%hello%% = %s\n", getenv("hello"));
 

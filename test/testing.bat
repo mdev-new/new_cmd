@@ -1,2 +1,3 @@
-extend "example.bin"
-test
+@echo off
+:hello
+goto :hello
