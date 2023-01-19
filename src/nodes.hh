@@ -147,11 +147,11 @@ struct EnvVarNode final : public Node {
 	stringifyfun;
 };
 
-// i have no idea how to implement this.
 struct CallNode final : public Node, public Evaluatable<int, InterpreterState*> {
 	char *funcName;
 	std::vector<Node *> args;
 	bool silent;
+	uint32_t hash;
 
 	CallNode(char *name, std::vector<Node*> args, bool slient = false);
 	evaltype evaluate(InterpreterState *state);
@@ -172,13 +172,11 @@ struct AssignNode final : public Node {
 
 struct LabelNode final : public IdNode {
 	int pos;
-	bool registered;
 	LabelNode(char *name, int pos);
-	void _register_(InterpreterState *state);
 	stringifyfun;
 };
 
-struct CompareNode final : public Node {
+struct CompareNode final : public InnerNode {
 	// kinda redundant
 	enum class CompareType {
 		GTR,
@@ -190,15 +188,13 @@ struct CompareNode final : public Node {
 		STRING
 	};
 
-	CompareNode(LeafNode *lhs, LeafNode *rhs, CompareType compareType, bool caseInsensitive = false);
-	bool evaluate();
+	CompareNode(LeafNode *lhs, LeafNode *rhs, CompareType compareType);
+	bool evaluate(bool caseInsensitive = false);
 	stringifyfun;
 
-private:
-	bool caseInsensitive, invert;
+//private:
 	CompareType cmpType;
-	LeafNode *lhs, *rhs;
-	std::function<bool(LeafNode *lhs, LeafNode *rhs)> cmpFunc;
+	std::function<bool(LeafNode *lhs, LeafNode *rhs, bool caseInsensitive)> cmpFunc;
 };
 
 struct ForNode final : public Node, public Evaluatable<int, InterpreterState *> {
@@ -213,14 +209,15 @@ struct ForNode final : public Node, public Evaluatable<int, InterpreterState *> 
 		CMDRESULTS // for /f ('command to be ran')
 	} forType;
 
-	ForNode(char id, std::vector<Node*> params, Node *loopBody);
+	ForNode(std::vector<Node*> params);
 	int evaluate(InterpreterState *state) override;
 	stringifyfun;
 
-private:
+//private:
 	std::function<bool()> loopCond;
 	std::function<void()> inc;
 	Node *loopBody;
+	std::vector<Node*> params;
 	char id;
 
 	union {
@@ -238,9 +235,10 @@ struct IfNode final : public Node, public Evaluatable<int, InterpreterState*> {
 	evaltype evaluate(InterpreterState *state) override;
 	stringifyfun;
 
-private:
+//private:
 	CompareNode *condition;
 	Node *sucess, *failure;
+	bool invert, caseInsensitive;
 };
 
 struct InterpreterState {

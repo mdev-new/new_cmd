@@ -37,19 +37,29 @@ void prettyPrint(int level, Node *n) {
 	for(int l = 0; l < 2*level; l++) printf(" ");
 	//putc('(', stdout); print_binary(n->type); printf(") ");
 	auto [_1, _2] = n->stringify();
+	printf("%s |%s|\n", _1, _2);
 	if(n->type & 1) { // inner
 		InnerNode *nn = n;
 		if(nn->type & WITHCHILDREN) {
-			printf("%s |%s|\n", _1, _2);
 			for (int x = 0; x < nn->childrenCount; x++) prettyPrint(level+1, nn->children[x]);
 		} else {
-			printf("%s |%s|\n", _1, _2);
-			prettyPrint(level+1, nn->lhs);
-			prettyPrint(level+1, nn->rhs);
+			if((nn->type & BARETYPE) == IN(INODE_IF)) {
+				IfNode *ifn = n;
+				prettyPrint(level+1, ifn->condition);
+				if(ifn->sucess != nullptr) prettyPrint(level+1, ifn->sucess);
+				if(ifn->failure != nullptr) prettyPrint(level+1, ifn->failure);
+			} else if((nn->type & BARETYPE) == IN(INODE_FOR)) {
+				ForNode *fn = n;
+				for (auto p : fn->params) {
+					prettyPrint(level+1, p);
+				}
+			} else {
+				prettyPrint(level+1, nn->lhs);
+				prettyPrint(level+1, nn->rhs);
+			}
 		}
 	} else { // leaf
-		printf("%s |%s|\n", _1, _2);
-		if((n->type & BARETYPE) == (MKNTYP(NODE_LEAF, LNODE_CALL) & BARETYPE)) {
+		if((n->type & BARETYPE) == MKNTYP(NODE_LEAF, LNODE_CALL)) {
 			CallNode *cln = n;
 			for(int p = 0; p < cln->args.size(); p++) prettyPrint(level+1, cln->args[p]);
 		}
@@ -70,6 +80,7 @@ int main(int argc, char *argv[], char *envp[]) {
 	}
 
 	FILE *f = fopen(argv[1], "r");
+	if(f == nullptr) return -1;
 	fseek(f, 0, SEEK_END);
 	size_t size = ftell(f);
 	rewind(f);
@@ -81,6 +92,8 @@ int main(int argc, char *argv[], char *envp[]) {
 
 	for(Node *n : intp.nodes) prettyPrint(0, n);
 
+	fprintf(stderr, "---\n");
+
 	int retncode = 0;
 
 	struct timespec begin, end;
@@ -90,6 +103,7 @@ int main(int argc, char *argv[], char *envp[]) {
 
 	clock_gettime(CLOCK_REALTIME, &end);
 	double timetaken = (end.tv_sec - begin.tv_sec) + (end.tv_nsec - begin.tv_nsec)*1e-6;
+	fprintf(stderr, "---\n");
 	fprintf(stderr, "Interpreting took: %.3f ms\n", timetaken);
 	fprintf(stderr, "Root nodes per second: %.f\n", intp.nodes.size() * (1000./timetaken));
 

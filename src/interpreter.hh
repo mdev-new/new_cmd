@@ -3,7 +3,7 @@
 #include "shared.hh"
 #include "parser.hpp"
 
-void RegisterLabel(InterpreterState *state, LabelNode *n);
+int executeNode(InterpreterState *state, Node *n);
 
 class Interpreter {
 	Parser parser;

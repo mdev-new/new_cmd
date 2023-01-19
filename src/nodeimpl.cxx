@@ -9,6 +9,7 @@
 #define mkstringify(x, z) std::pair<const char *, char *> x::stringify() { return std::make_pair(#x, z); };
 
 // like interpreter, this file HAS to be optimized aswell
+// atleast the things on hot path
 
 char *itoa_(int i) {
 	static char b[21] = {0};
@@ -99,11 +100,13 @@ void ParenthesesNode::append(Node *n) {
 }
 
 int ParenthesesNode::evaluate(InterpreterState *state) {
-	// we'll probably be evaluating commands here aswell
+	int retcode = 0;
 
-	printf("!!! UNIMPLEMENTED !!!: %s", __PRETTY_FUNCTION__);
+	for(int i = 0; i < this->childrenCount; i++) {
+		retcode = executeNode(state, this->children[i]);
+	}
 
-	return -1;
+	return retcode;
 }
 mkstringify(ParenthesesNode, nullptr);
 
@@ -170,22 +173,21 @@ mkstringify(EnvVarNode, nullptr);
 CallNode::CallNode(char *name, std::vector<Node*> arguments, bool silent = false)
 : super(LN(LNODE_CALL), nullptr, nullptr),
   args(arguments),
-  silent(silent)
+  silent(silent),
+  funcName(strdup(name)),
+  hash(_hashfunc_(this->funcName, true))
 {
-	this->funcName = strdup(name);
 }
 
 int CallNode::evaluate(InterpreterState *state) {
-	_hashtype_ hashed = _hashfunc_(this->funcName, false);
-
 	// todo stringify whole command
 
 	bool dontEcho = this->silent || state->echo;
 	if(!dontEcho) {
 	}
 
-	if(multicharMapping.count(hashed) > 0) {
-		CallPtr funcPtr = multicharMapping.at(hashed).second;
+	if(multicharMapping.count(this->hash) > 0) {
+		CallPtr funcPtr = multicharMapping.at(this->hash).second;
 		if(funcPtr != nullptr) {
 			return funcPtr((CallParams){args.data(), args.size(), state});
 		}
@@ -244,76 +246,76 @@ LabelNode::LabelNode(char *name, int pos)
 	this->type = MKNTYP(NODE_LEAF, LNODE_LABEL);
 }
 
-void LabelNode::_register_(InterpreterState *state) {
-	if(!registered) {
-		RegisterLabel(state, this);
-		registered = true;
-	}
-	return;
-}
-
 mkstringify(LabelNode, this->str);
 
 /* === CompareNode === */
 
-CompareNode::CompareNode(LeafNode *lhs, LeafNode *rhs, CompareType compareType, bool caseInsensitive = false)
+CompareNode::CompareNode(LeafNode *lhs, LeafNode *rhs, CompareType compareType)
 	: super(IN(INODE_COMPARE), nullptr, nullptr),
-	cmpType(compareType),
-	lhs(lhs),
-	rhs(rhs)
+	cmpType(compareType)
 {
+	this->lhs = lhs;
+	this->rhs = rhs;
+
 	switch(compareType) {
 	case CompareType::GTR: {
-		this->cmpFunc = [](LeafNode *lhs, LeafNode *rhs) {
+		this->cmpFunc = [](LeafNode *lhs, LeafNode *rhs, bool caseInsensitive) {
 			return lhs->num > rhs->num;
 		};
+		break;
 	}
 	case CompareType::LSS: {
-		this->cmpFunc = [](LeafNode *lhs, LeafNode *rhs) {
+		this->cmpFunc = [](LeafNode *lhs, LeafNode *rhs, bool caseInsensitive) {
 			return lhs->num < rhs->num;
 		};
+		break;
 	}
 	case CompareType::GEQ: {
-		this->cmpFunc = [](LeafNode *lhs, LeafNode *rhs) {
+		this->cmpFunc = [](LeafNode *lhs, LeafNode *rhs, bool caseInsensitive) {
 			return lhs->num >= rhs->num;
 		};
+		break;
 	}
 	case CompareType::LEQ: {
-		this->cmpFunc = [](LeafNode *lhs, LeafNode *rhs) {
+		this->cmpFunc = [](LeafNode *lhs, LeafNode *rhs, bool caseInsensitive) {
 			return lhs->num <= rhs->num;
 		};
+		break;
 	}
 	case CompareType::EQU: {
-		this->cmpFunc = [](LeafNode *lhs, LeafNode *rhs) {
+		this->cmpFunc = [](LeafNode *lhs, LeafNode *rhs, bool caseInsensitive) {
 			return lhs->num == rhs->num;
 		};
+		break;
 	}
 	case CompareType::NEQ: {
-		this->cmpFunc = [](LeafNode *lhs, LeafNode *rhs) {
+		this->cmpFunc = [](LeafNode *lhs, LeafNode *rhs, bool caseInsensitive) {
 			return lhs->num != rhs->num;
 		};
+		break;
 	}
 	case CompareType::STRING: {
-		this->cmpFunc = [](LeafNode *lhs, LeafNode *rhs) {
-			return strcmp(lhs->str, rhs->str) == 0;
+		this->cmpFunc = [](LeafNode *lhs, LeafNode *rhs, bool caseInsensitive) {
+			//printf("%s %s\n", lhs->str, rhs->str);
+			if(caseInsensitive) return strcasecmp(lhs->str, rhs->str) == 0;
+			else return strcmp(lhs->str, rhs->str) == 0;
 		};
+		break;
 	}
 	}
 }
 
-bool CompareNode::evaluate() {
-	bool ret = this->cmpFunc(this->lhs, this->rhs);
-	return this->invert? !ret : ret;
+bool CompareNode::evaluate(bool caseInsensitive = false) {
+	return this->cmpFunc((LeafNode*)(this->lhs), (LeafNode*)(this->rhs), caseInsensitive);
 }
 
 mkstringify(CompareNode, nullptr);
 
 /* == ForNode == */
 // params = /type "opts" ()
-ForNode::ForNode(char id, std::vector<Node*> params, Node *loopBody)
+ForNode::ForNode(std::vector<Node*> params)
 	: super(IN(INODE_FOR), nullptr, nullptr),
-	id(id),
-	loopBody(loopBody)
+	params(params)
 {
 	if(params[0]->type == LN(LNODE_SWITCH)) {
 		SwitchNode *sw = params[0];
@@ -330,8 +332,11 @@ ForNode::ForNode(char id, std::vector<Node*> params, Node *loopBody)
 				this->forType = ForType::FILECONTENTS;
 			}
 		}
+
+		this->id = TCAST(IdNode*, params[1])->str[0];
 	} else {
 		this->forType = ForType::FILES;
+		this->id = TCAST(IdNode*, params[0])->str[0];
 	}
 
 	switch(this->forType) {
@@ -381,16 +386,17 @@ IfNode::IfNode(CompareNode *cond, Node *ifBodyRoot, Node *elseBodyRoot = nullptr
 	: super(IN(INODE_IF), nullptr, nullptr),
 	condition(cond),
 	sucess(ifBodyRoot),
-	failure(elseBodyRoot)
+	failure(elseBodyRoot),
+	invert(invert),
+	caseInsensitive(caseInsensitive)
 {
-
 }
 
 int IfNode::evaluate(InterpreterState *state) {
-	if(condition->evaluate()) {
-		((Evaluatable<int, InterpreterState*>*)sucess)->evaluate(state);
+	if(condition->evaluate(this->caseInsensitive) || this->invert) {
+		executeNode(state, this->sucess);
 	} else {
-		((Evaluatable<int, InterpreterState*>*)failure)->evaluate(state);
+		if(this->failure != nullptr) executeNode(state, this->failure);
 	}
 
 	return 0;

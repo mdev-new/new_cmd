@@ -43,6 +43,7 @@ Token Lexer::get() {
 	case '~': ReturnToken(TOK_TILDE);
 	case '&': ReturnToken(TOK_AND);
 	case '@': ReturnToken(TOK_AT);
+	case '!': ReturnToken(TOK_EXCLAMATION);
 	case '\'':
 	case '"': {
 		char x = buffer[idx++];
@@ -75,7 +76,7 @@ Token Lexer::get() {
 		int len = idx - idstart;
 		char *identifier = strndup(buffer+idstart, len);
 
-		_hashtype_ h = _hashfunc_(identifier);
+		_hashtype_ h = _hashfunc_(identifier, true);
 		if(multicharMapping.count(h) > 0) {
 			auto _token = multicharMapping.at(h).first;
 			return (Token){_token, identifier, 0, idstart, len};

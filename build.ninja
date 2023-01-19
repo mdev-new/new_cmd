@@ -1,9 +1,8 @@
-cflags=-Og -ggdb3 -fsanitize=address -static-libgcc -static-libstdc++
+#cflags=-Og -ggdb3 -fsanitize=address -static-libgcc -static-libstdc++ -pg
 
-#-static-libgcc -static-libstdc++ # make things a tiny bit faster at the expense of size
 # todo research -fno-plt
-#cflags=-static-libgcc -static-libstdc++ -static -pipe -Ofast -flto -fshort-enums -march=native -mtune=native -msse -msse2 -msse4.2 -mavx -mavx2 -mmmx -funsafe-math-optimizations -ftree-vectorize -ffast-math -ftree-slp-vectorize -fassociative-math -fvisibility=hidden -fcompare-debug-second -fno-stack-protector -fno-math-errno -fno-ident -fno-asynchronous-unwind-tables -fno-exceptions -ffunction-sections -fdata-sections -Wl,-s,--gc-sections,--reduce-memory-overheads,--build-id=none -DNDEBUG
-shutup=-w -std=gnu++20 -fpermissive -Wno-narrowing -Wno-unused-result -Wno-format
+cflags=-static -pipe -Ofast -flto=auto -fwhole-program -fuse-linker-plugin -fshort-enums -march=native -mtune=native -msse -msse2 -msse4.2 -mavx -mavx2 -mmmx -funsafe-math-optimizations -ftree-vectorize -ffast-math -ftree-slp-vectorize -fassociative-math -fvisibility=hidden -fcompare-debug-second -fno-stack-protector -fno-math-errno -fno-ident -fno-asynchronous-unwind-tables -fno-exceptions -ffunction-sections -fdata-sections -Wl,--gc-sections,--build-id=none -DNDEBUG -g3
+shutup=-w -Wno-error -std=gnu++20 -fpermissive -Wno-narrowing -Wno-unused-result -Wno-format
 
 cc = ccache g++
 
@@ -14,7 +13,7 @@ rule cpp
 
 rule link
   command = $cc -o $out $cflags $in
-  description = cpp $out
+  description = link $out
 
 build bin/main.o: cpp src/main.cpp
 build bin/lexer.o: cpp src/lexer.cpp

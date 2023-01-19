@@ -1,3 +1,1 @@
-@echo off
-:hello
-goto :hello
+if /i "a"=="A" ver

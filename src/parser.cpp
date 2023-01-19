@@ -48,10 +48,10 @@ int SortTokens(std::vector<Token> &tokens, int start, int breaktok) {
 			std::swap(tokens[i], tokens[i-1]);
 		}
 
-		if(last.type == TOK_EQUALS && current.type == TOK_EQUALS) {
-			tokens.erase(tokens.begin() + i-1);
-			tokens[i-1] = (Token){TOK_DEQUAL, 0, 0};
-			std::swap(tokens[i-1], tokens[i-2]);
+		if(current.type == TOK_EQUALS && tokens[i+1].type == TOK_EQUALS) {
+			tokens.erase(tokens.begin() + i+1);
+			tokens[i] = (Token){TOK_DEQUAL, 0, 0};
+			std::swap(tokens[i], tokens[i-1]);
 			continue;
 		}
 
@@ -117,7 +117,7 @@ std::pair<int, Node*> makeNode(std::vector<Token> tokens, int i, int level) {
 	case TOK_LEFTPAREN: {
 		int j, skip = 1;
 		ParenthesesNode *n = new ParenthesesNode();
-		for(j = i+1; tokens[j].type != TOK_RIGHTPAREN; j+=skip, skip=1) {
+		for(j = i+1; tokens[j].type != TOK_RIGHTPAREN && tokens[j].type != TOK_EOF; j+=skip, skip=1) {
 			auto [ss, nn] = makeNode(tokens, j, 0);
 			n->append(nn);
 			skip = ss;
@@ -173,14 +173,67 @@ std::pair<int, Node*> makeNode(std::vector<Token> tokens, int i, int level) {
 		return std::make_pair(lskip+rskip+1, new CompareNode(lhs, rhs, CompareNode::CompareType::NEQ));
 	}
 
-	// case TOK_DEQUAL: {
-	// 	break;
-	// }
+	case TOK_DEQUAL: {
+		auto [lskip, lhs] = makeNode(tokens, i+1, level+1);
+		auto [rskip, rhs] = makeNode(tokens, i+2, level+1);
+		return std::make_pair(lskip+rskip+1, new CompareNode(lhs, rhs, CompareNode::CompareType::STRING));
+	}
 
 	case TOK_FOR: {
+		std::vector<Node*> args;
+		int s = 1, x = 1;
+		auto [skip1, node1] = makeNode(tokens, i+x, level+1);
+		args.push_back(node1);
+		s += skip1;
+		while(args.back()->type != LN(LNODE_CALL) && args.back()->type != IN(INODE_PARENTHESES)) {
+			auto [skip, node] = makeNode(tokens, i+x, level+1);
+			s += skip;
+			args.push_back(node);
+			x++;
+		}
+
+		return std::make_pair(s, new ForNode(args));
 	}
 
 	case TOK_IF: {
+		int _i = i+1, skip = 1;
+
+		CompareNode *cmp;
+		Node *sucessRoot = nullptr, *failureRoot = nullptr;
+		bool invert = false, caseInsensitive = false;
+		bool elseEncountered = false;
+
+		for(; command_terminators.count(tokens[_i].type) == 0 && _i < tokens.size()-1; _i+=skip, skip = 1) {
+			if(tokens[i].type == TOK_ELSE && sucessRoot != nullptr) {
+				elseEncountered = true;
+				continue;
+			}
+			auto [skp, nod] = makeNode(tokens, _i, level+1);
+			if(nod != nullptr) {
+				switch(nod->type & BARETYPE) {
+				case IN(INODE_COMPARE): {
+					cmp = nod;
+					break;
+				}
+				case LN(LNODE_SWITCH): {
+					SwitchNode *sw = nod;
+					if(strcasecmp(sw->str, "i") == 0) caseInsensitive = true;
+					else if(strcasecmp(sw->str, "not") == 0) invert = true;
+					break;
+				}
+				//case IN(INODE_PARENTHESES):
+				case LN(LNODE_CALL): {
+					//printf("%s\n", nod->stringify().first);
+					if(elseEncountered) failureRoot = nod;
+					else sucessRoot = nod;
+					break;
+				}
+				default: break;
+				}
+			} else delete nod;
+		}
+
+		return std::make_pair(_i-i, new IfNode(cmp, sucessRoot, failureRoot, invert, caseInsensitive));
 	}
 
 	case TOK_STRING: return std::make_pair(1, new StringNode((char*)tokens[i].value));
@@ -195,7 +248,7 @@ std::pair<int, Node*> makeNode(std::vector<Token> tokens, int i, int level) {
 
 		std::vector<Node *> args;
 
-		bool isCall = strcmp(tokens[i].value, "call") == 0 || strcmp(tokens[i].value, "start") == 0; // lets avoid headaches caused by reparsing that line later on :)
+		bool isCall = strcasecmp(tokens[i].value, "call") == 0 || strcasecmp(tokens[i].value, "start") == 0; // lets avoid headaches caused by reparsing that line later on :)
 
 		for(; command_terminators.count(tokens[_i].type) == 0 && _i < tokens.size(); _i+=skip, skip = 1) {
 			auto [skp, nod] = makeNode(tokens, _i, isCall? 0 : 1);

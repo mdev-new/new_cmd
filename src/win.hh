@@ -14,5 +14,6 @@ char *realpath(char *rel, char *abs);
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <strings.h>
 
 #endif

@@ -15,3 +15,4 @@ sdk/dlltool.exe
 .settings
 *.dll
 *.bin
+cachegrind.*

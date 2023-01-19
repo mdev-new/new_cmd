@@ -6,6 +6,7 @@
 #include <climits>
 #include <cstdlib>
 #include "win.hh"
+#include "nodes.hh"
 
 // optimize as much as possible
 
@@ -14,22 +15,38 @@
 
 #define IFUN(name) int name(CallParams callParams)
 
-[[gnu::noinline]] constexpr uint32_t fnvhash(char const* str, bool removeCases = false) {
-	uint32_t hash = 0, i = 0;
-	char c = 0;
-	while(c = str[i]) {
-		if(removeCases && 'A' <= c && c <= 'Z') c += 'a' - 'A';
-		hash = (hash * 0x811C9DC5) ^ c;
-		i++;
+[[gnu::noinline]] uint32_t fnvhash(char const* str, bool lowercase = false) {
+	uint32_t hash = 0;
+	char c, i = 0; // lets not hash strings > 256 chars
+	while(c = str[i++]) {
+		hash = (hash * 0x811C9DC5) ^ ((lowercase)? c | 0x20 : c);
 	}
 	return hash;
 }
 
-consteval uint32_t consthash(char const* s) {
-	return fnvhash(s);
+// here come things that can be in root of the parse tree or parentheses
+int executeNode(InterpreterState *state, Node *n) {
+	switch(n->type) {
+	case LN(LNODE_CALL): {
+		auto retcode = TCAST(CallNode*, n)->evaluate(state);
+		//setenv("errorlevel", itoa_(retcode), true);
+		return 0;
+	}
+	case IN(INODE_PARENTHESES): {
+		return TCAST(ParenthesesNode*, n)->evaluate(state);
+	}
+	case IN(INODE_BINOP): {
+		return TCAST(BinOpNode*, n)->evaluate();
+	}
+	case IN(INODE_FOR): {
+		return TCAST(ForNode*, n)->evaluate(state);
+	}
+	case IN(INODE_IF): {
+		return TCAST(IfNode*, n)->evaluate(state);
+	}
+	default: return -1;
+	}
 }
-
-#define fe(x,y,z) {consthash(x), { y,z } },
 
 // -- HIGH PRIORITY --
 // todo finish implementation
@@ -335,6 +352,8 @@ IFUN(doPath) {
 extern IFUN(doInject);
 #endif
 
+
+#define fe(x,y,z) {consthash(x), { y,z } },
 std::unordered_map<_hashtype_, std::pair<uint8_t, CallPtr>, Hasher> multicharMapping = {
 	fe("do", TOK_DO, nullptr)
 	fe("else", TOK_ELSE, nullptr)
@@ -404,10 +423,6 @@ void RegisterCommand(char *cmd, CallPtr func) {
 	multicharMapping[_hashfunc_(cmd)] = std::make_pair(TOK_BUILTIN, func);
 }
 
-void RegisterLabel(InterpreterState *state, LabelNode *n) {
-	state->labels[_hashfunc_(n->str)] = n->pos;
-}
-
 Interpreter::Interpreter(char *buffer, size_t size)
  : parser(buffer, size)
 {
@@ -422,22 +437,14 @@ int Interpreter::interpret() {
 	for(Node *n : this->nodes) {
 		if(n->type == LN(LNODE_LABEL)) {
 			LabelNode *ln = n;
-			ln->_register_(&this->state);
+			this->state.labels[_hashfunc_(ln->str)] = ln->pos;
 		}
 	}
 
 	// loop over root nodes
-	Node *current;
-	//int &i = this->state.filepos;
-	for(; this->state.filepos < this->nodes.size(); this->state.filepos++) {
-		current = nodes[this->state.filepos];
-		switch(current->type) {
-		case LN(LNODE_CALL): {
-			auto retcode = TCAST(CallNode*, current)->evaluate(&this->state);
-			setenv("errorlevel", itoa_(retcode), true);
-			break;
-		};
-		}
+	int &i = this->state.filepos;
+	for(; i < this->nodes.size(); i++) {
+		executeNode(&this->state, nodes[i]);
 	}
 
 	return 0;
