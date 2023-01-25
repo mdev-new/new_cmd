@@ -3,62 +3,64 @@
 #include <cstddef>
 #include <vector>
 
-enum TokenType {
-	TOK_INVAL = -1,
-	TOK_EOF = 0,
-	TOK_SPACE,
-	TOK_ID,
-	TOK_NUMBER,
-	TOK_STRING,
-	TOK_SINGLEQUOTESTRING = 5,
+struct TokenType {
+	enum {
+		Inval = -1,
+		Eof = 0,
+		Space,
+		Id,
+		Number,
+		String,
+		SinglequoteString = 5,
 
-	// created artificially by parser
-	TOK_SWITCH = 6,
-	TOK_LABEL,
-	TOK_DEQUAL = 8,
-	// ---
+		// created artificially by parser
+		Switch = 6,
+		Label,
+		Dequal = 8,
+		// ---
 
-	TOK_LEFTPAREN = 9,
-	TOK_RIGHTPAREN = 10,
-	TOK_EQUALS,
-	TOK_PLUS,
-	TOK_MINUS,
-	TOK_ASTERISK,
-	TOK_SLASH = 15,
-	TOK_DOT,
-	TOK_COMMA,
-	TOK_COLON,
-	TOK_SEMICOLON,
-	TOK_SINGLEQUOTE,
-	TOK_DOUBLEQUOTE,
-	TOK_PIPE,
-	TOK_PERCENT,
-	TOK_TILDE,
-	TOK_AND = 25,
-	TOK_AT,
+		Leftparen = 9,
+		Rightparen = 10,
+		Equals,
+		Plus,
+		Minus,
+		Asterisk,
+		Slash = 15,
+		Dot,
+		Comma,
+		Colon,
+		Semicolon,
+		Singlequote,
+		Doublequote,
+		Pipe,
+		Percent,
+		Tilde,
+		And = 25,
+		At,
 
-	TOK_EXCLAMATION,
+		Exclamation,
 
-	TOK_PIPEIN, // <
-	TOK_PIPEOUT, // >
+		PipeIn, // <
+		PipeOut, // >
 
-	TOK_LSS,
-	TOK_GTR,
-	TOK_GEQ,
-	TOK_LEQ,
-	TOK_EQU,
-	TOK_NEQ,
+		Lss,
+		Gtr,
+		Geq,
+		Leq,
+		Equ,
+		Neq,
 
-	TOK_BUILTIN,
-	TOK_FOR,
-	TOK_DO,
-	TOK_IF,
-	TOK_ELSE,
-	TOK_IN,
+		BuiltIn,
+		For,
+		Do,
+		If,
+		Else,
+		In,
+	};
 };
 
 struct Token {
-	short type;
+	int type;
 	uint64_t value;
 	uint64_t additionalData;
 

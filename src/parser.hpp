@@ -1,11 +1,10 @@
 #pragma once
 #include <vector>
 #include <cstdint>
+#include <variant>
 #include "lexer.hpp"
 #include "nodes.hh"
-
-#define WITHCHILDREN (1 << 15)
-#define BARETYPE (0xFF)
+#include "shared.hh"
 
 class Parser {
 	Lexer lexer;

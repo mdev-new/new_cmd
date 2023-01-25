@@ -1,5 +1,7 @@
 #ifdef _WIN64
 #include "shared.hh"
+#include "nodes.hh"
+#include "commands.hh"
 #include "win.hh"
 
 // todo expose node types
@@ -15,7 +17,6 @@
 #include <cstdio>
 
 typedef unsigned __int64 QWORD;
-extern void RegisterCommand(char *cmd, CallPtr func);
 
 enum {
   ERROR_NOT_CMDEXE = -2,

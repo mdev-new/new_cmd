@@ -5,6 +5,8 @@
 #include <unordered_map>
 #include <utility>
 
+#include "commands.hh"
+
 static char *strndup(const char *str, size_t chars) {
 	char *buffer = calloc(chars +1, sizeof (char));
 	if (!buffer) return nullptr;
@@ -25,33 +27,33 @@ Token Lexer::get() {
 #define ReturnToken(x) idx++; return (Token){x, 0, 0, idx-1, 1}
 
 	switch(buffer[idx]) {
-	case '(': ReturnToken(TOK_LEFTPAREN);
-	case ')': ReturnToken(TOK_RIGHTPAREN);
-	case '<': ReturnToken(TOK_PIPEIN);
-	case '>': ReturnToken(TOK_PIPEOUT);
-	case '=': ReturnToken(TOK_EQUALS);
-	case '+': ReturnToken(TOK_PLUS);
-	case '-': ReturnToken(TOK_MINUS);
-	case '*': ReturnToken(TOK_ASTERISK);
-	case '/': ReturnToken(TOK_SLASH);
-	case '.': ReturnToken(TOK_DOT);
-	case ',': ReturnToken(TOK_COMMA);
-	case ':': ReturnToken(TOK_COLON);
-	case ';': ReturnToken(TOK_SEMICOLON);
-	case '|': ReturnToken(TOK_PIPE);
-	case '%': ReturnToken(TOK_PERCENT);
-	case '~': ReturnToken(TOK_TILDE);
-	case '&': ReturnToken(TOK_AND);
-	case '@': ReturnToken(TOK_AT);
-	case '!': ReturnToken(TOK_EXCLAMATION);
+	case '(': ReturnToken(TokenType::Leftparen);
+	case ')': ReturnToken(TokenType::Rightparen);
+	case '<': ReturnToken(TokenType::PipeIn);
+	case '>': ReturnToken(TokenType::PipeOut);
+	case '=': ReturnToken(TokenType::Equals);
+	case '+': ReturnToken(TokenType::Plus);
+	case '-': ReturnToken(TokenType::Minus);
+	case '*': ReturnToken(TokenType::Asterisk);
+	case '/': ReturnToken(TokenType::Slash);
+	case '.': ReturnToken(TokenType::Dot);
+	case ',': ReturnToken(TokenType::Comma);
+	case ':': ReturnToken(TokenType::Colon);
+	case ';': ReturnToken(TokenType::Semicolon);
+	case '|': ReturnToken(TokenType::Pipe);
+	case '%': ReturnToken(TokenType::Percent);
+	case '~': ReturnToken(TokenType::Tilde);
+	case '&': ReturnToken(TokenType::And);
+	case '@': ReturnToken(TokenType::At);
+	case '!': ReturnToken(TokenType::Exclamation);
 	case '\'':
 	case '"': {
 		char x = buffer[idx++];
 		size_t orig_idx = idx;
 		while(buffer[idx++] != x);
-		return (Token){(buffer[orig_idx-1] == '"')? TOK_STRING : TOK_SINGLEQUOTESTRING, strndup(&buffer[orig_idx], idx-1-orig_idx), idx-1-orig_idx, orig_idx-1, idx-orig_idx+1};
+		return (Token){(buffer[orig_idx-1] == '"')? TokenType::String : TokenType::SinglequoteString, strndup(&buffer[orig_idx], idx-1-orig_idx), idx-1-orig_idx, orig_idx-1, idx-orig_idx+1};
 	}
-	case '\n': ReturnToken(TOK_SPACE);
+	case '\n': ReturnToken(TokenType::Space);
 	default: break;
 	}
 
@@ -65,7 +67,7 @@ Token Lexer::get() {
 				num = num * 10 + buffer[idx] - '0';
 			idx++;
 		}
-		return (Token){TOK_NUMBER, num, 0, orig_idx, idx-orig_idx};
+		return (Token){TokenType::Number, num, 0, orig_idx, idx-orig_idx};
 	}
 
 	if(validIdStart(buffer[idx])) {
@@ -80,10 +82,10 @@ Token Lexer::get() {
 		if(multicharMapping.count(h) > 0) {
 			auto _token = multicharMapping.at(h).first;
 			return (Token){_token, identifier, 0, idstart, len};
-		} else return (Token){TOK_ID, identifier, len, idstart, len};
+		} else return (Token){TokenType::Id, identifier, len, idstart, len};
 	}
 
-	ReturnToken(TOK_INVAL);
+	ReturnToken(TokenType::Inval);
 }
 
 std::vector<Token> Lexer::lexBuffer() {
@@ -91,9 +93,9 @@ std::vector<Token> Lexer::lexBuffer() {
 
 	while(!eof()) {
 		auto token = get();
-		if(token.type != TOK_INVAL) list.push_back(token);
+		if(token.type != TokenType::Inval) list.push_back(token);
 	}
 
-	list.push_back((Token){TOK_EOF, 0, 0, 0, 0});
+	list.push_back((Token){TokenType::Eof, 0, 0, 0, 0});
 	return list;
 }

@@ -3,7 +3,6 @@
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
-
 #include <conio.h>
 
 void setenv(char *name, char *value, bool overwrite);
@@ -15,5 +14,7 @@ char *realpath(char *rel, char *abs);
 #include <stdlib.h>
 #include <unistd.h>
 #include <strings.h>
+#include <string.h>
+#include <limits.h>
 
 #endif

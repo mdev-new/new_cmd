@@ -1,10 +1,12 @@
 #pragma once
 #include <unordered_map>
 #include <cstdint>
+#include <cstdio>
 #include <cstddef>
 #include <vector>
 #include <stack>
 #include <functional>
+#include <variant>
 
 // NOTE TO SELF: This doubles down as public API
 // so even tho i don't like the placement of things here they have to stay \_(ツ)_/
@@ -12,43 +14,47 @@
 // todo throw all this into an namespace
 
 #define stringifyfun std::pair<const char *, char *> stringify() override
-
 #define IFUN(name) int name(CallParams callParams)
 
-enum NodeType {
-	NODE_LEAF,
-	NODE_INNER,
-};
+#define NTP(x, y) (x | (y << 1))
 
-enum InnerNodeType {
-	INODE_PARENTHESES,
-	INODE_BINOP,
-	INODE_ASSIGN,
-	INODE_COMPARE,
-	INODE_IF,
-	INODE_FOR
-};
+// todo lowercase
+struct NodeType {
+	enum {
+		Parentheses = NTP(0, 0),
+		BinOp		= NTP(0, 1),
+		Assign		= NTP(0, 2),
+		Compare		= NTP(0, 3),
+		If			= NTP(0, 4),
+		For			= NTP(0, 5),
+		Call		= NTP(0, 6),
 
-enum LeafNodeType {
-	LNODE_NUMBER,
-	LNODE_STRING,
-	LNODE_ENVVAR,
-	LNODE_CALL,
-	LNODE_LABEL,
-	LNODE_ID,
-	LNODE_SWITCH,
+		Number		= NTP(1, 1),
+		String		= NTP(1, 2),
+		EnvVar		= NTP(1, 3),
+		Label		= NTP(1, 4),
+		Id			= NTP(1, 5),
+		Switch		= NTP(1, 6),
+	};
 };
 
 struct InterpreterState;
-struct Token;
 struct Node {
-	char type;
+	short type; //zzzzzzzzzzyyyyyx // z=custom storage
 	virtual std::pair<const char *, char *> stringify() = 0;
 
-	char *srcStart, *srcEnd;
+	size_t srcStart, srcEnd;
 	Node(char type, char *start, char *end);
 
 	typedef Node super;
+};
+
+struct EvaluatableNode : public Node {
+	virtual uint64_t evaluate(InterpreterState *s = nullptr);
+	using Node::Node;
+	typedef EvaluatableNode super;
+
+	virtual operator int() const;
 };
 
 struct LeafNode : public Node {
@@ -61,31 +67,25 @@ struct LeafNode : public Node {
 	typedef LeafNode super;
 };
 
+template<typename T = Node*>
 struct InnerNode : public Node {
 	union {
-		struct { Node **children; int childrenCount; };
-		struct { Node *lhs; Node *rhs; };
+		struct { std::vector<T>* children; };
+		struct { T lhs; T rhs; };
 	};
 
 	using Node::Node;
 	typedef InnerNode super;
 };
 
-template<typename T, class... types>
-struct Evaluatable {
-	virtual T evaluate(types... args) = 0;
-	typedef T evaltype;
-};
-
 struct NumberNode final : public LeafNode {
 	NumberNode(int n);
-	int evaluate();
+	uint64_t evaluate();
 	stringifyfun;
 };
 
 struct StringNode : public LeafNode {
 	StringNode(char *s, bool singlequote = false);
-	char *evaluate();
 	bool singlequote = false;
 	stringifyfun;
 };
@@ -101,60 +101,61 @@ struct SwitchNode final : public StringNode {
 	stringifyfun;
 };
 
-struct ParenthesesNode : public InnerNode, public Evaluatable<int, InterpreterState*> {
-	int threshold = 16;
-
-	explicit ParenthesesNode();
-	void append(Node *n);
-	evaltype evaluate(InterpreterState *state);
+struct ParenthesesNode : public InnerNode<EvaluatableNode*> {
+	ParenthesesNode();
+	uint64_t evaluate(InterpreterState *state);
 	stringifyfun;
 };
 
-struct BinOpNode : public InnerNode, public Evaluatable<int> {
-	explicit BinOpNode(Node *lhs, Node *rhs);
+struct BinOpNode : public InnerNode<EvaluatableNode*> {
+	BinOpNode(Node *lhs, Node *rhs);
+	virtual int evaluate() = 0;
 	typedef BinOpNode super;
 };
 
 struct AdditionNode final : public BinOpNode {
 	using BinOpNode::BinOpNode;
-	evaltype evaluate() override;
+	int evaluate() override;
 	stringifyfun;
 };
 
 struct SubtractionNode final : public BinOpNode {
 	using BinOpNode::BinOpNode;
-	evaltype evaluate() override;
+	int evaluate() override;
 	stringifyfun;
 };
 
 struct MultiplicationNode final : public BinOpNode {
 	using BinOpNode::BinOpNode;
-	evaltype evaluate() override;
+	int evaluate() override;
 	stringifyfun;
 };
 
 struct DivisionNode final : public BinOpNode {
 	using BinOpNode::BinOpNode;
-	evaltype evaluate() override;
+	int evaluate() override;
 	stringifyfun;
 };
 
-struct EnvVarNode final : public Node {
+struct EnvVarNode final : public EvaluatableNode {
 	char *name, *value = nullptr;
+	bool delayedExpansion;
 
-	EnvVarNode(char *name);
-	char *evaluate(bool delayedExpansion);
+	EnvVarNode(char *name, bool delayedExpansion);
+	char *evaluate();
 	stringifyfun;
+
+	operator int() const;
 };
 
-struct CallNode final : public Node, public Evaluatable<int, InterpreterState*> {
+struct CallNode final : public EvaluatableNode {
 	char *funcName;
-	std::vector<Node *> args;
 	bool silent;
 	uint32_t hash;
+	std::vector<Node*> *children;
 
 	CallNode(char *name, std::vector<Node*> args, bool slient = false);
-	evaltype evaluate(InterpreterState *state);
+	uint64_t evaluate(InterpreterState *state) override;
 	stringifyfun;
 };
 
@@ -176,7 +177,7 @@ struct LabelNode final : public IdNode {
 	stringifyfun;
 };
 
-struct CompareNode final : public InnerNode {
+struct CompareNode final : public InnerNode<LeafNode*> {
 	// kinda redundant
 	enum class CompareType {
 		GTR,
@@ -185,11 +186,13 @@ struct CompareNode final : public InnerNode {
 		LEQ,
 		EQU,
 		NEQ,
-		STRING
+		STRING,
+		DEFINED,
+		EXISTS
 	};
 
 	CompareNode(LeafNode *lhs, LeafNode *rhs, CompareType compareType);
-	bool evaluate(bool caseInsensitive = false);
+	uint64_t evaluate(bool caseInsensitive = false);
 	stringifyfun;
 
 //private:
@@ -197,7 +200,7 @@ struct CompareNode final : public InnerNode {
 	std::function<bool(LeafNode *lhs, LeafNode *rhs, bool caseInsensitive)> cmpFunc;
 };
 
-struct ForNode final : public Node, public Evaluatable<int, InterpreterState *> {
+struct ForNode final : public EvaluatableNode {
 	// completely redundantant but whatever
 	enum class ForType {
 		FILES, // for
@@ -209,15 +212,14 @@ struct ForNode final : public Node, public Evaluatable<int, InterpreterState *> 
 		CMDRESULTS // for /f ('command to be ran')
 	} forType;
 
-	ForNode(std::vector<Node*> params);
-	int evaluate(InterpreterState *state) override;
+	ForNode(ForType type, char id, ParenthesesNode *cond, EvaluatableNode *body);
+	uint64_t evaluate(InterpreterState *state);
 	stringifyfun;
 
 //private:
 	std::function<bool()> loopCond;
 	std::function<void()> inc;
-	Node *loopBody;
-	std::vector<Node*> params;
+	EvaluatableNode *loopBody;
 	char id;
 
 	union {
@@ -230,20 +232,18 @@ struct ForNode final : public Node, public Evaluatable<int, InterpreterState *> 
 	};
 };
 
-struct IfNode final : public Node, public Evaluatable<int, InterpreterState*> {
-	IfNode(CompareNode *cond, Node *ifBodyRoot, Node *elseBodyRoot = nullptr, bool invert = false, bool caseInsensitive = false);
-	evaltype evaluate(InterpreterState *state) override;
+struct IfNode final : public EvaluatableNode {
+	IfNode(CompareNode *cond, EvaluatableNode *ifBodyRoot, EvaluatableNode *elseBodyRoot = nullptr, bool invert = false, bool caseInsensitive = false);
+	uint64_t evaluate(InterpreterState *state) override;
 	stringifyfun;
 
 //private:
 	CompareNode *condition;
-	Node *sucess, *failure;
+	EvaluatableNode *sucess, *failure;
 	bool invert, caseInsensitive;
 };
 
 struct InterpreterState {
-	bool extensions;
-	bool delayedExpansion;
 	bool echo;
 	int filepos;
 
@@ -255,8 +255,7 @@ struct InterpreterState {
 };
 
 struct CallParams {
-	Node **params;
-	int noParams;
+	std::vector<Node*>* params;
 	InterpreterState *state;
 };
 

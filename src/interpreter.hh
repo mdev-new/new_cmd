@@ -3,13 +3,12 @@
 #include "shared.hh"
 #include "parser.hpp"
 
-int executeNode(InterpreterState *state, Node *n);
+// evaluate root node or node without specific parameters
+//uint64_t eval(Node *n, InterpreterState *state = nullptr);
 
 class Interpreter {
 	Parser parser;
 	InterpreterState state = {
-		.extensions = true,
-		.delayedExpansion = false,
 		.echo = true,
 		.filepos = 0
 	};

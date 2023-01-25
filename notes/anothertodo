@@ -5,10 +5,12 @@ todo
 [ ] %%x variables
 [ ] %* variables
 [ ] for, if, else
+	- [x] if
 [ ] %random%
 [ ] substrings, string replacements
 [?] echo on, off and @ commands
 [ ] .. => parent dir
+[ ] call parameters
 
 use native apis on win
 UNICODEEEEEE

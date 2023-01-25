@@ -20,7 +20,7 @@
 #include <cstdlib>
 #include <cstring>
 
-#include <ctime>
+#include <sys/time.h>
 
 #include <unistd.h>
 
@@ -34,34 +34,35 @@ void print_binary(unsigned int number) {
 
 void prettyPrint(int level, Node *n) {
 	//printf("TYPE: %d\n", n->type);
+	printf("[%s]", __FILE__);
 	for(int l = 0; l < 2*level; l++) printf(" ");
 	//putc('(', stdout); print_binary(n->type); printf(") ");
 	auto [_1, _2] = n->stringify();
 	printf("%s |%s|\n", _1, _2);
 	if(n->type & 1) { // inner
-		InnerNode *nn = n;
-		if(nn->type & WITHCHILDREN) {
-			for (int x = 0; x < nn->childrenCount; x++) prettyPrint(level+1, nn->children[x]);
+		InnerNode<Node*> *nn = (InnerNode<Node*> *)n;
+		if(n->type & WITHCHILDREN) {
+			for (int x = 0; x < nn->children->size(); x++) prettyPrint(level+1, (*nn->children)[x]);
 		} else {
-			if((nn->type & BARETYPE) == IN(INODE_IF)) {
+			if((n->type & BARETYPE) == NodeType::If) {
 				IfNode *ifn = n;
 				prettyPrint(level+1, ifn->condition);
 				if(ifn->sucess != nullptr) prettyPrint(level+1, ifn->sucess);
 				if(ifn->failure != nullptr) prettyPrint(level+1, ifn->failure);
-			} else if((nn->type & BARETYPE) == IN(INODE_FOR)) {
+			} else if((n->type & BARETYPE) == NodeType::For) {
 				ForNode *fn = n;
-				for (auto p : fn->params) {
-					prettyPrint(level+1, p);
-				}
+				// for (auto p : fn->params) {
+				// 	prettyPrint(level+1, p);
+				// }
 			} else {
 				prettyPrint(level+1, nn->lhs);
 				prettyPrint(level+1, nn->rhs);
 			}
 		}
 	} else { // leaf
-		if((n->type & BARETYPE) == MKNTYP(NODE_LEAF, LNODE_CALL)) {
+		if((n->type & BARETYPE) == NodeType::Call) {
 			CallNode *cln = n;
-			for(int p = 0; p < cln->args.size(); p++) prettyPrint(level+1, cln->args[p]);
+			for(int p = 0; p < cln->children->size(); p++) prettyPrint(level+1, (*cln->children)[p]);
 		}
 	}
 }
@@ -79,6 +80,9 @@ int main(int argc, char *argv[], char *envp[]) {
 		return 0;
 	}
 
+	struct timeval tval_before, tval_after, tval_result;
+
+	gettimeofday(&tval_before, NULL);
 	FILE *f = fopen(argv[1], "r");
 	if(f == nullptr) return -1;
 	fseek(f, 0, SEEK_END);
@@ -88,24 +92,31 @@ int main(int argc, char *argv[], char *envp[]) {
 	char *buffer = calloc(size, sizeof(char));
 	fread(buffer, size, 1, f);
 
+	gettimeofday(&tval_after, NULL);
+	timersub(&tval_after, &tval_before, &tval_result);
+	fprintf(stderr, "[%s] Reading took:\t%ld.%06ld\n", __FILE__, (long int)tval_result.tv_sec, (long int)tval_result.tv_usec);
+
+	gettimeofday(&tval_before, NULL);
 	Interpreter intp(buffer, size);
+	gettimeofday(&tval_after, NULL);
+	timersub(&tval_after, &tval_before, &tval_result);
+	fprintf(stderr, "[%s] Parsing took:\t%ld.%06ld\n", __FILE__, (long int)tval_result.tv_sec, (long int)tval_result.tv_usec);
 
-	for(Node *n : intp.nodes) prettyPrint(0, n);
-
-	fprintf(stderr, "---\n");
+	//for(Node *n : intp.nodes) prettyPrint(0, n);
 
 	int retncode = 0;
 
-	struct timespec begin, end;
-	clock_gettime(CLOCK_REALTIME, &begin);
+	gettimeofday(&tval_before, NULL);
 
 	retncode = intp.interpret();
 
-	clock_gettime(CLOCK_REALTIME, &end);
-	double timetaken = (end.tv_sec - begin.tv_sec) + (end.tv_nsec - begin.tv_nsec)*1e-6;
-	fprintf(stderr, "---\n");
-	fprintf(stderr, "Interpreting took: %.3f ms\n", timetaken);
-	fprintf(stderr, "Root nodes per second: %.f\n", intp.nodes.size() * (1000./timetaken));
+	gettimeofday(&tval_after, NULL);
+	timersub(&tval_after, &tval_before, &tval_result);
+
+	double timetaken = (double)tval_result.tv_sec + (double)tval_result.tv_usec / 1000000.;
+
+	fprintf(stderr, "[%s] Interpreter took:%f\n", __FILE__, timetaken);
+	fprintf(stderr, "[%s] Root commands/s:\t%.f\n", __FILE__, intp.nodes.size() / timetaken);
 
 	//printf("%%hello%% = %s\n", getenv("hello"));
 

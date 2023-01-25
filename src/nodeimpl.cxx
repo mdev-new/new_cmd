@@ -6,6 +6,8 @@
 #include "win.hh"
 #include "shared.hh"
 
+#include "commands.hh"
+
 #define mkstringify(x, z) std::pair<const char *, char *> x::stringify() { return std::make_pair(#x, z); };
 
 // like interpreter, this file HAS to be optimized aswell
@@ -22,14 +24,6 @@ char *itoa_(int i) {
 	return c;
 }
 
-int evalToInt(Node *root, InterpreterState *state = nullptr) {
-	switch(root->type & BARETYPE) {
-	case MKNTYP(NODE_LEAF, LNODE_NUMBER): return ((NumberNode*)root)->evaluate();
-	//case MKNTYP(NODE_INNER, INODE_PARENTHESES): return ((ParenthesesNode*)root)->evaluate();
-	case MKNTYP(NODE_INNER, INODE_BINOP): return ((BinOpNode*)root)->evaluate();
-	}
-}
-
 Node::Node(char type, char *start, char *end)
 	: srcStart(start),
 	  srcEnd(end),
@@ -37,27 +31,40 @@ Node::Node(char type, char *start, char *end)
 {
 }
 
+uint64_t EvaluatableNode::evaluate(InterpreterState *s = nullptr) {
+	switch(this->type) {
+	case NodeType::If: return TCAST(IfNode*, this)->evaluate(s);
+	case NodeType::Call: return TCAST(CallNode*, this)->evaluate(s);
+	default: return 0;
+	}
+}
+
+EvaluatableNode::operator int() const {
+	switch(this->type) {
+	case NodeType::EnvVar: return int(*TCAST(EnvVarNode*, this));
+	default: return 0;
+	}
+}
+
 /* === NumberNode === */
 
 NumberNode::NumberNode(int n)
-	: super(LN(LNODE_NUMBER), nullptr, nullptr)
+	: super(NodeType::Number, 0, 0)
 {
 	this->num = n;
 }
 
-int NumberNode::evaluate() { return num; }
 mkstringify(NumberNode, itoa_(this->num));
 
 /* === StringNode === */
 
 StringNode::StringNode(char *s, bool singlequote = false)
-	: super(LN(LNODE_STRING), nullptr, nullptr),
+	: super(NodeType::String, 0, 0),
 	singlequote(singlequote)
 {
 	this->str = strdup(s);
 }
 
-char *StringNode::evaluate() { return str; }
 mkstringify(StringNode, this->str);
 
 /* === SwitchNode === */
@@ -67,7 +74,7 @@ SwitchNode::SwitchNode(char *s, char pref)
  : StringNode(s),
  prefix(pref)
 {
-	this->type = MKNTYP(NODE_LEAF, LNODE_SWITCH);
+	this->type = NodeType::Switch;
 }
 mkstringify(SwitchNode, this->str); // todo prepend the prefix to the string
 
@@ -77,7 +84,7 @@ mkstringify(SwitchNode, this->str); // todo prepend the prefix to the string
 IdNode::IdNode(char *s)
  : StringNode(s)
 {
-	this->type = MKNTYP(NODE_LEAF, LNODE_ID);
+	this->type = NodeType::Id;
 }
 mkstringify(IdNode, this->str);
 
@@ -85,25 +92,18 @@ mkstringify(IdNode, this->str);
 /* === ParenthesesNode === */
 
 ParenthesesNode::ParenthesesNode()
-	: super(IN(INODE_PARENTHESES) | WITHCHILDREN, nullptr, nullptr)
+	: super(NodeType::Parentheses | WITHCHILDREN, 0, 0)
 {
-	this->children = malloc(threshold*sizeof(Node*));
-	this->childrenCount = 0;
+	this->children = new std::vector<EvaluatableNode*>();
 }
 
-
-void ParenthesesNode::append(Node *n) {
-	if(this->childrenCount+1 >= this->threshold) this->children = realloc(this->children, (threshold += 16)*sizeof(Node*));
-	children[childrenCount++] = n;
-
-	//printf("APPEND: %d %d\n", childrenCount, n->type);
-}
-
-int ParenthesesNode::evaluate(InterpreterState *state) {
+uint64_t ParenthesesNode::evaluate(InterpreterState *state) {
 	int retcode = 0;
 
-	for(int i = 0; i < this->childrenCount; i++) {
-		retcode = executeNode(state, this->children[i]);
+	auto& children = *this->children;
+
+	for(int i = 0; i < children.size(); i++) {
+		retcode = children.at(i)->evaluate(state);
 	}
 
 	return retcode;
@@ -114,7 +114,7 @@ mkstringify(ParenthesesNode, nullptr);
 /* === BinOpNode === */
 
 BinOpNode::BinOpNode(Node *lhs, Node *rhs)
-	: InnerNode(IN(INODE_BINOP), nullptr, nullptr)
+	: InnerNode(NodeType::BinOp, 0, 0)
 {
 	this->lhs = lhs;
 	this->rhs = rhs;
@@ -124,7 +124,7 @@ BinOpNode::BinOpNode(Node *lhs, Node *rhs)
 /* === AdditionNode === */
 
 int AdditionNode::evaluate() {
-	return evalToInt(lhs) + evalToInt(rhs);
+	return int(lhs->evaluate()) + int(rhs->evaluate());
 }
 mkstringify(AdditionNode, itoa_(evaluate()));
 
@@ -132,7 +132,7 @@ mkstringify(AdditionNode, itoa_(evaluate()));
 /* === SubtractionNode === */
 
 int SubtractionNode::evaluate() {
-	return evalToInt(lhs) - evalToInt(rhs);
+	return int(lhs->evaluate()) - int(rhs->evaluate());
 }
 mkstringify(SubtractionNode, itoa_(evaluate()));
 
@@ -140,7 +140,7 @@ mkstringify(SubtractionNode, itoa_(evaluate()));
 /* === MultiplicationNode === */
 
 int MultiplicationNode::evaluate() {
-	return evalToInt(lhs) * evalToInt(rhs);
+	return int(lhs->evaluate()) * int(rhs->evaluate());
 }
 mkstringify(MultiplicationNode, itoa_(evaluate()));
 
@@ -148,38 +148,44 @@ mkstringify(MultiplicationNode, itoa_(evaluate()));
 /* === DivisionNode === */
 
 int DivisionNode::evaluate() {
-	return evalToInt(lhs) / evalToInt(rhs);
+	return int(lhs->evaluate()) / int(rhs->evaluate());
 }
 mkstringify(DivisionNode, itoa_(evaluate()));
 
 
 /* === EnvVarNode === */
 
-EnvVarNode::EnvVarNode(char *name)
-	:super(LN(LNODE_ENVVAR), nullptr, nullptr), 
-	 name(name)
+EnvVarNode::EnvVarNode(char *name, bool delayedExpansion)
+	:super(NodeType::EnvVar, 0, 0),
+	 name(name),
+	 delayedExpansion(delayedExpansion)
 {
 }
 
-char *EnvVarNode::evaluate(bool delayedExpansion) {
+char *EnvVarNode::evaluate() {
 	if(value == nullptr) return value = getenv(name);
 	if(!delayedExpansion) return value;
 	return getenv(name);
 }
+
+EnvVarNode::operator int() const {
+	return atoi(evaluate());
+}
+
 mkstringify(EnvVarNode, nullptr);
 
 
 /* === CallNode === */
 CallNode::CallNode(char *name, std::vector<Node*> arguments, bool silent = false)
-: super(LN(LNODE_CALL), nullptr, nullptr),
-  args(arguments),
+: super(NodeType::Call, 0, 0),
   silent(silent),
   funcName(strdup(name)),
   hash(_hashfunc_(this->funcName, true))
 {
+	this->children = new std::vector<Node*>(arguments);
 }
 
-int CallNode::evaluate(InterpreterState *state) {
+uint64_t CallNode::evaluate(InterpreterState *state) {
 	// todo stringify whole command
 
 	bool dontEcho = this->silent || state->echo;
@@ -189,7 +195,7 @@ int CallNode::evaluate(InterpreterState *state) {
 	if(multicharMapping.count(this->hash) > 0) {
 		CallPtr funcPtr = multicharMapping.at(this->hash).second;
 		if(funcPtr != nullptr) {
-			return funcPtr((CallParams){args.data(), args.size(), state});
+			return funcPtr((CallParams){this->children, state});
 		}
 	} else {
 		// todo find the executable
@@ -210,14 +216,14 @@ mkstringify(CallNode, this->funcName);
 
 /* === EqualsNode === */
 AssignNode::AssignNode(Node *lhs, Node *rhs)
-	: super(IN(INODE_ASSIGN), nullptr, nullptr)
+	: super(NodeType::Assign, 0, 0)
 {
 	this->one.lhs = lhs;
 	this->one.rhs = rhs;
 }
 
 AssignNode::AssignNode(Node **lhs, int lhsCount, Node *rhs)
-	: super(IN(INODE_ASSIGN) | WITHCHILDREN, nullptr, nullptr)
+	: super(NodeType::Assign | WITHCHILDREN, 0, 0)
 {
 	this->many.lhs = lhs;
 	this->many.rhs = rhs;
@@ -243,7 +249,7 @@ LabelNode::LabelNode(char *name, int pos)
  IdNode(name)
 {
 	this->str = name;
-	this->type = MKNTYP(NODE_LEAF, LNODE_LABEL);
+	this->type = NodeType::Label;
 }
 
 mkstringify(LabelNode, this->str);
@@ -251,7 +257,7 @@ mkstringify(LabelNode, this->str);
 /* === CompareNode === */
 
 CompareNode::CompareNode(LeafNode *lhs, LeafNode *rhs, CompareType compareType)
-	: super(IN(INODE_COMPARE), nullptr, nullptr),
+	: super(NodeType::Compare, 0, 0),
 	cmpType(compareType)
 {
 	this->lhs = lhs;
@@ -302,10 +308,22 @@ CompareNode::CompareNode(LeafNode *lhs, LeafNode *rhs, CompareType compareType)
 		};
 		break;
 	}
+	case CompareType::EXISTS: {
+		this->cmpFunc = [](LeafNode *lhs, LeafNode *rhs, bool caseInsensitive) {
+			return access(lhs->str, F_OK) == 0;
+		};
+		break;
+	}
+	case CompareType::DEFINED: {
+		this->cmpFunc = [](LeafNode *lhs, LeafNode *rhs, bool caseInsensitive) {
+			return getenv(lhs->str) != NULL;
+		};
+		break;
+	}
 	}
 }
 
-bool CompareNode::evaluate(bool caseInsensitive = false) {
+uint64_t CompareNode::evaluate(bool caseInsensitive = false) {
 	return this->cmpFunc((LeafNode*)(this->lhs), (LeafNode*)(this->rhs), caseInsensitive);
 }
 
@@ -313,31 +331,33 @@ mkstringify(CompareNode, nullptr);
 
 /* == ForNode == */
 // params = /type "opts" ()
-ForNode::ForNode(std::vector<Node*> params)
-	: super(IN(INODE_FOR), nullptr, nullptr),
-	params(params)
+ForNode::ForNode(ForType type, char id, ParenthesesNode *cond, EvaluatableNode *body)
+	: super(NodeType::For, 0, 0),
+	forType(type),
+	id(id),
+	loopBody(body)
 {
-	if(params[0]->type == LN(LNODE_SWITCH)) {
-		SwitchNode *sw = params[0];
-		if(strcmp(sw->str, "L") == 0) this->forType = ForType::NUMBERS;
-		else if(strcmp(sw->str, "R") == 0) this->forType = ForType::FILESROOTED;
-		else if(strcmp(sw->str, "D")) this->forType = ForType::FOLDERS;
-		else if(strcmp(sw->str, "F")) {
-			ParenthesesNode *pn = params[2];
-			if(pn->children[0]->type == LNODE_STRING) {
-				StringNode *str = pn->children[0];
-				if(str->singlequote) this->forType = ForType::CMDRESULTS;
-				else this->forType = ForType::STRINGCONTENTS;
-			} else {
-				this->forType = ForType::FILECONTENTS;
-			}
-		}
+	// if(params[0]->type == LN(LNODE_SWITCH)) {
+	// 	SwitchNode *sw = params[0];
+	// 	if(strcasecmp(sw->str, "L") == 0) this->forType = ForType::NUMBERS;
+	// 	else if(strcasecmp(sw->str, "R") == 0) this->forType = ForType::FILESROOTED;
+	// 	else if(strcasecmp(sw->str, "D")) this->forType = ForType::FOLDERS;
+	// 	else if(strcasecmp(sw->str, "F")) {
+	// 		ParenthesesNode *pn = params[2];
+	// 		if(pn->children[0]->type == LNODE_STRING) {
+	// 			StringNode *str = pn->children[0];
+	// 			if(str->singlequote) this->forType = ForType::CMDRESULTS;
+	// 			else this->forType = ForType::STRINGCONTENTS;
+	// 		} else {
+	// 			this->forType = ForType::FILECONTENTS;
+	// 		}
+	// 	}
 
-		this->id = TCAST(IdNode*, params[1])->str[0];
-	} else {
-		this->forType = ForType::FILES;
-		this->id = TCAST(IdNode*, params[0])->str[0];
-	}
+	// 	this->id = TCAST(IdNode*, params[1])->str[0];
+	// } else {
+	// 	this->forType = ForType::FILES;
+	// 	this->id = TCAST(IdNode*, params[0])->str[0];
+	// }
 
 	switch(this->forType) {
 	case ForType::FILES: {
@@ -372,9 +392,9 @@ ForNode::ForNode(std::vector<Node*> params)
 	}
 }
 
-int ForNode::evaluate(InterpreterState *state) {
+uint64_t ForNode::evaluate(InterpreterState *state) {
 	for(; this->loopCond(); this->inc()) {
-		((Evaluatable<int, InterpreterState *>*)this->loopBody)->evaluate(state);
+		this->loopBody->evaluate(state);
 	}
 
 	return 0;
@@ -382,8 +402,8 @@ int ForNode::evaluate(InterpreterState *state) {
 
 mkstringify(ForNode, nullptr);
 
-IfNode::IfNode(CompareNode *cond, Node *ifBodyRoot, Node *elseBodyRoot = nullptr, bool invert = false, bool caseInsensitive = false)
-	: super(IN(INODE_IF), nullptr, nullptr),
+IfNode::IfNode(CompareNode *cond, EvaluatableNode *ifBodyRoot, EvaluatableNode *elseBodyRoot = nullptr, bool invert = false, bool caseInsensitive = false)
+	: super(NodeType::If, 0, 0),
 	condition(cond),
 	sucess(ifBodyRoot),
 	failure(elseBodyRoot),
@@ -392,11 +412,12 @@ IfNode::IfNode(CompareNode *cond, Node *ifBodyRoot, Node *elseBodyRoot = nullptr
 {
 }
 
-int IfNode::evaluate(InterpreterState *state) {
-	if(condition->evaluate(this->caseInsensitive) || this->invert) {
-		executeNode(state, this->sucess);
+uint64_t IfNode::evaluate(InterpreterState *state) {
+	if(this->condition->evaluate(this->caseInsensitive) || this->invert) {
+		//eval(this->sucess, state);
+		this->sucess->evaluate(state);
 	} else {
-		if(this->failure != nullptr) executeNode(state, this->failure);
+		if(this->failure != nullptr) this->failure->evaluate(state);
 	}
 
 	return 0;
