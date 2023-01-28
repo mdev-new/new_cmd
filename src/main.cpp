@@ -24,45 +24,54 @@
 
 #include <unistd.h>
 
+#include <magic_enum.hpp>
+
 #include "win.hh"
 #include "interpreter.hh"
 
-void print_binary(unsigned int number) {
+template<typename T>
+void print_binary(T number) {
     if (number >> 1) print_binary(number >> 1);
     putc((number & 1) ? '1' : '0', stdout);
 }
 
 void prettyPrint(int level, Node *n) {
-	//printf("TYPE: %d\n", n->type);
+	if(n == nullptr) return;
 	printf("[%s]", __FILE__);
-	for(int l = 0; l < 2*level; l++) printf(" ");
-	//putc('(', stdout); print_binary(n->type); printf(") ");
+	for(int l = -1; l < 2*level; l++) printf(" ");
+	//putc('(', stdout); print_binary<unsigned short>(n->type); printf(") ");
 	auto [_1, _2] = n->stringify();
 	printf("%s |%s|\n", _1, _2);
+
 	if(n->type & 1) { // inner
-		InnerNode<Node*> *nn = (InnerNode<Node*> *)n;
-		if(n->type & WITHCHILDREN) {
-			for (int x = 0; x < nn->children->size(); x++) prettyPrint(level+1, (*nn->children)[x]);
-		} else {
-			if((n->type & BARETYPE) == NodeType::If) {
-				IfNode *ifn = n;
-				prettyPrint(level+1, ifn->condition);
-				if(ifn->sucess != nullptr) prettyPrint(level+1, ifn->sucess);
-				if(ifn->failure != nullptr) prettyPrint(level+1, ifn->failure);
-			} else if((n->type & BARETYPE) == NodeType::For) {
-				ForNode *fn = n;
-				// for (auto p : fn->params) {
-				// 	prettyPrint(level+1, p);
-				// }
-			} else {
-				prettyPrint(level+1, nn->lhs);
-				prettyPrint(level+1, nn->rhs);
-			}
+		if((n->type & BARETYPE) == Node::Type::If) {
+			IfNode *ifn = n;
+			prettyPrint(level+1, ifn->condition);
+			prettyPrint(level+1, ifn->sucess);
+			if(ifn->failure != nullptr) prettyPrint(level+1, ifn->failure);
 		}
-	} else { // leaf
-		if((n->type & BARETYPE) == NodeType::Call) {
-			CallNode *cln = n;
-			for(int p = 0; p < cln->children->size(); p++) prettyPrint(level+1, (*cln->children)[p]);
+		else if((n->type & BARETYPE) == Node::Type::For) {
+			ForNode *fn = n;
+
+			printf("[%s]", __FILE__);
+			for(int l = -1; l < 2*(level+1); l++) printf(" ");
+			printf("%c\n", fn->id);
+
+			printf("[%s]", __FILE__);
+			for(int l = -1; l < 2*(level+1); l++) printf(" ");
+			printf("%s\n", magic_enum::enum_name(fn->forType).data());
+
+			//prettyPrint(level+1, fn->opts);
+			prettyPrint(level+1, fn->cond);
+			prettyPrint(level+1, fn->loopBody);
+		}
+		else {
+			if(n->type & WITHCHILDREN)
+				for (Node *child : *n->children) prettyPrint(level+1, child);
+			else {
+				prettyPrint(level+1, n->lhs);
+				prettyPrint(level+1, n->rhs);
+			}
 		}
 	}
 }
@@ -102,13 +111,13 @@ int main(int argc, char *argv[], char *envp[]) {
 	timersub(&tval_after, &tval_before, &tval_result);
 	fprintf(stderr, "[%s] Parsing took:\t%ld.%06ld\n", __FILE__, (long int)tval_result.tv_sec, (long int)tval_result.tv_usec);
 
-	//for(Node *n : intp.nodes) prettyPrint(0, n);
+	for(Node *n : intp.nodes) prettyPrint(0, n);
 
 	int retncode = 0;
 
 	gettimeofday(&tval_before, NULL);
 
-	retncode = intp.interpret();
+	//retncode = intp.interpret();
 
 	gettimeofday(&tval_after, NULL);
 	timersub(&tval_after, &tval_before, &tval_result);

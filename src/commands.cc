@@ -13,7 +13,7 @@ IFUN(doSet) {
 	Node *current;
 	for(int i = 0; i < callParams.params->size(); i++) {
 		current = (*callParams.params)[i];
-		if((current->type & BARETYPE) == NodeType::Assign)
+		if((current->type & BARETYPE) == Node::Type::Assign)
 			TCAST(AssignNode *, current)->assign();
 	}
 
@@ -88,7 +88,7 @@ IFUN(doColor) {
 	unsigned char color = 0x0F;
 
 	if(callParams.params->size() != 0) {
-		if((*callParams.params)[0]->type == NodeType::Number) color = TCAST(NumberNode *, (*callParams.params)[0])->num;
+		if((*callParams.params)[0]->type == Node::Type::Number) color = TCAST(NumberNode *, (*callParams.params)[0])->num;
 		else color = strtol(TCAST(IdNode *, (*callParams.params)[0])->str, NULL, 16);
 	}
 
@@ -191,7 +191,7 @@ IFUN(doTitle) {
 
 IFUN(doType) {
 	for(int i = 0; i < callParams.params->size(); i++) {
-		if(((*callParams.params)[i]->type & BARETYPE) == NodeType::Id || ((*callParams.params)[i]->type & BARETYPE) == NodeType::String) {
+		if(((*callParams.params)[i]->type & BARETYPE) == Node::Type::Id || ((*callParams.params)[i]->type & BARETYPE) == Node::Type::String) {
 			// todo replace with createfile, getfilesize & readfile
 			FILE *f = fopen(TCAST(StringNode *, (*callParams.params)[i])->str, "r");
 			fseek(f, 0, SEEK_END);
@@ -313,70 +313,70 @@ extern IFUN(doInject);
 
 #define fe(x,y,z) {consthash(x), { y,z } },
 std::unordered_map<_hashtype_, std::pair<decltype(Token::type), CallPtr>, Hasher> multicharMapping = {
-	fe("do", TokenType::Do, nullptr)
-	fe("else", TokenType::Else, nullptr)
-	fe("in", TokenType::In, nullptr)
-	fe("for", TokenType::For, nullptr)
-	fe("if", TokenType::If, nullptr)
+	fe("do", Token::Type::Do, nullptr)
+	fe("else", Token::Type::Else, nullptr)
+	fe("in", Token::Type::In, nullptr)
+	fe("for", Token::Type::For, nullptr)
+	fe("if", Token::Type::If, nullptr)
 
-	fe("gtr", TokenType::Gtr, nullptr)
-	fe("geq", TokenType::Geq, nullptr)
-	fe("lss", TokenType::Lss, nullptr)
-	fe("leq", TokenType::Leq, nullptr)
-	fe("equ", TokenType::Equ, nullptr)
-	fe("neq", TokenType::Neq, nullptr)
+	fe("gtr", Token::Type::Gtr, nullptr)
+	fe("geq", Token::Type::Geq, nullptr)
+	fe("lss", Token::Type::Lss, nullptr)
+	fe("leq", Token::Type::Leq, nullptr)
+	fe("equ", Token::Type::Equ, nullptr)
+	fe("neq", Token::Type::Neq, nullptr)
 
-	fe("call", TokenType::BuiltIn, doCall)
-	fe("cd", TokenType::BuiltIn, doChdir)
-	fe("chdir", TokenType::BuiltIn, doChdir)
-	fe("cls", TokenType::BuiltIn, doCls)
-	fe("copy", TokenType::BuiltIn, doCopy)
-	fe("date", TokenType::BuiltIn, doDate)
-	fe("del", TokenType::BuiltIn, doDel)
-	fe("dir", TokenType::BuiltIn, doDir)
-	fe("echo", TokenType::BuiltIn, doEcho)
-	fe("erase", TokenType::BuiltIn, doErase)
-	fe("goto", TokenType::BuiltIn, doGoto)
-	fe("help", TokenType::BuiltIn, doHelp)
-	fe("label", TokenType::BuiltIn, doLabel)
-	fe("md", TokenType::BuiltIn, doMkdir)
-	fe("mkdir", TokenType::BuiltIn, doMkdir)
-	fe("move", TokenType::BuiltIn, doMove)
-	fe("path", TokenType::BuiltIn, doPath)
-	fe("pause", TokenType::BuiltIn, doPause)
-	fe("prompt", TokenType::BuiltIn, doPrompt)
-	fe("rem", TokenType::BuiltIn, doRem)
-	fe("ren", TokenType::BuiltIn, doRename)
-	fe("rename", TokenType::BuiltIn, doRename)
-	fe("rd", TokenType::BuiltIn, doRmdir)
-	fe("rmdir", TokenType::BuiltIn, doRmdir)
-	fe("set", TokenType::BuiltIn, doSet)
-	fe("shift", TokenType::BuiltIn, doShift)
-	fe("start", TokenType::BuiltIn, doStart)
-	fe("time", TokenType::BuiltIn, doTime)
-	fe("title", TokenType::BuiltIn, doTitle)
-	fe("type", TokenType::BuiltIn, doType)
-	fe("verify", TokenType::BuiltIn, doVerify)
-	fe("ver", TokenType::BuiltIn, doVer)
-	fe("vol", TokenType::BuiltIn, doVol)
-	fe("endlocal", TokenType::BuiltIn, doEndlocal)
-	fe("setlocal", TokenType::BuiltIn, doSetlocal)
-	fe("pushd", TokenType::BuiltIn, doPushd)
-	fe("popd", TokenType::BuiltIn, doPopd)
-	fe("assoc", TokenType::BuiltIn, doAssoc)
-	fe("color", TokenType::BuiltIn, doColor)
-	fe("ftype", TokenType::BuiltIn, doFtype)
-	fe("more", TokenType::BuiltIn, doMore)
-	fe("choice", TokenType::BuiltIn, doChoice)
-	fe("mklink", TokenType::BuiltIn, doMklink)
-	fe("exit", TokenType::BuiltIn, doExit)
-	fe("break", TokenType::BuiltIn, doBreak)
+	fe("call", Token::Type::BuiltIn, doCall)
+	fe("cd", Token::Type::BuiltIn, doChdir)
+	fe("chdir", Token::Type::BuiltIn, doChdir)
+	fe("cls", Token::Type::BuiltIn, doCls)
+	fe("copy", Token::Type::BuiltIn, doCopy)
+	fe("date", Token::Type::BuiltIn, doDate)
+	fe("del", Token::Type::BuiltIn, doDel)
+	fe("dir", Token::Type::BuiltIn, doDir)
+	fe("echo", Token::Type::BuiltIn, doEcho)
+	fe("erase", Token::Type::BuiltIn, doErase)
+	fe("goto", Token::Type::BuiltIn, doGoto)
+	fe("help", Token::Type::BuiltIn, doHelp)
+	fe("label", Token::Type::BuiltIn, doLabel)
+	fe("md", Token::Type::BuiltIn, doMkdir)
+	fe("mkdir", Token::Type::BuiltIn, doMkdir)
+	fe("move", Token::Type::BuiltIn, doMove)
+	fe("path", Token::Type::BuiltIn, doPath)
+	fe("pause", Token::Type::BuiltIn, doPause)
+	fe("prompt", Token::Type::BuiltIn, doPrompt)
+	fe("rem", Token::Type::BuiltIn, doRem)
+	fe("ren", Token::Type::BuiltIn, doRename)
+	fe("rename", Token::Type::BuiltIn, doRename)
+	fe("rd", Token::Type::BuiltIn, doRmdir)
+	fe("rmdir", Token::Type::BuiltIn, doRmdir)
+	fe("set", Token::Type::BuiltIn, doSet)
+	fe("shift", Token::Type::BuiltIn, doShift)
+	fe("start", Token::Type::BuiltIn, doStart)
+	fe("time", Token::Type::BuiltIn, doTime)
+	fe("title", Token::Type::BuiltIn, doTitle)
+	fe("type", Token::Type::BuiltIn, doType)
+	fe("verify", Token::Type::BuiltIn, doVerify)
+	fe("ver", Token::Type::BuiltIn, doVer)
+	fe("vol", Token::Type::BuiltIn, doVol)
+	fe("endlocal", Token::Type::BuiltIn, doEndlocal)
+	fe("setlocal", Token::Type::BuiltIn, doSetlocal)
+	fe("pushd", Token::Type::BuiltIn, doPushd)
+	fe("popd", Token::Type::BuiltIn, doPopd)
+	fe("assoc", Token::Type::BuiltIn, doAssoc)
+	fe("color", Token::Type::BuiltIn, doColor)
+	fe("ftype", Token::Type::BuiltIn, doFtype)
+	fe("more", Token::Type::BuiltIn, doMore)
+	fe("choice", Token::Type::BuiltIn, doChoice)
+	fe("mklink", Token::Type::BuiltIn, doMklink)
+	fe("exit", Token::Type::BuiltIn, doExit)
+	fe("break", Token::Type::BuiltIn, doBreak)
 
 #ifdef _WIN64 // currently only Windows x64 supported, sorry
-	fe("extend", TokenType::BuiltIn, doInject)
+	fe("extend", Token::Type::BuiltIn, doInject)
 #endif
 };
 
 void RegisterCommand(char *cmd, CallPtr func) {
-	multicharMapping[_hashfunc_(cmd)] = std::make_pair(TokenType::BuiltIn, func);
+	multicharMapping[_hashfunc_(cmd)] = std::make_pair(Token::Type::BuiltIn, func);
 }

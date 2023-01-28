@@ -24,4 +24,4 @@ consteval uint32_t consthash(char const* str, bool removeCases = false) {
 
 #define TCAST(type, val) ((type)val)
 #define WITHCHILDREN (1 << 15)
-#define BARETYPE (0b111111)
+#define BARETYPE 0xF

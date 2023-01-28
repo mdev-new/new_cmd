@@ -24,24 +24,27 @@ char *itoa_(int i) {
 	return c;
 }
 
-Node::Node(char type, char *start, char *end)
+Node::Node(decltype(Node::type) type, char *start, char *end)
 	: srcStart(start),
 	  srcEnd(end),
 	  type(type)
 {
 }
 
-uint64_t EvaluatableNode::evaluate(InterpreterState *s = nullptr) {
-	switch(this->type) {
-	case NodeType::If: return TCAST(IfNode*, this)->evaluate(s);
-	case NodeType::Call: return TCAST(CallNode*, this)->evaluate(s);
-	default: return 0;
+uint64_t Node::evaluate(InterpreterState *s = nullptr) {
+	switch(this->type & BARETYPE) {
+	case Node::Type::If: return TCAST(IfNode*, this)->evaluate(s);
+	case Node::Type::For: return TCAST(ForNode*, this)->evaluate(s);
+	case Node::Type::Call: return TCAST(CallNode*, this)->evaluate(s);
+	case Node::Type::BinOp: return TCAST(BinOpNode*, this)->evaluate();
+	case Node::Type::Number: return TCAST(NumberNode*, this)->num;
+	default: printf("hit default! %d\n", this->type); return 0;
 	}
 }
 
-EvaluatableNode::operator int() const {
+Node::operator int() const {
 	switch(this->type) {
-	case NodeType::EnvVar: return int(*TCAST(EnvVarNode*, this));
+	case Node::Type::EnvVar: return int(*TCAST(EnvVarNode*, this));
 	default: return 0;
 	}
 }
@@ -49,7 +52,7 @@ EvaluatableNode::operator int() const {
 /* === NumberNode === */
 
 NumberNode::NumberNode(int n)
-	: super(NodeType::Number, 0, 0)
+	: super(Node::Type::Number, 0, 0)
 {
 	this->num = n;
 }
@@ -59,7 +62,7 @@ mkstringify(NumberNode, itoa_(this->num));
 /* === StringNode === */
 
 StringNode::StringNode(char *s, bool singlequote = false)
-	: super(NodeType::String, 0, 0),
+	: super(Node::Type::String, 0, 0),
 	singlequote(singlequote)
 {
 	this->str = strdup(s);
@@ -74,7 +77,7 @@ SwitchNode::SwitchNode(char *s, char pref)
  : StringNode(s),
  prefix(pref)
 {
-	this->type = NodeType::Switch;
+	this->type = Node::Type::Switch;
 }
 mkstringify(SwitchNode, this->str); // todo prepend the prefix to the string
 
@@ -84,7 +87,7 @@ mkstringify(SwitchNode, this->str); // todo prepend the prefix to the string
 IdNode::IdNode(char *s)
  : StringNode(s)
 {
-	this->type = NodeType::Id;
+	this->type = Node::Type::Id;
 }
 mkstringify(IdNode, this->str);
 
@@ -92,9 +95,9 @@ mkstringify(IdNode, this->str);
 /* === ParenthesesNode === */
 
 ParenthesesNode::ParenthesesNode()
-	: super(NodeType::Parentheses | WITHCHILDREN, 0, 0)
+	: super(Node::Type::Parentheses | WITHCHILDREN, 0, 0)
 {
-	this->children = new std::vector<EvaluatableNode*>();
+	this->children = new std::vector<Node*>();
 }
 
 uint64_t ParenthesesNode::evaluate(InterpreterState *state) {
@@ -114,7 +117,7 @@ mkstringify(ParenthesesNode, nullptr);
 /* === BinOpNode === */
 
 BinOpNode::BinOpNode(Node *lhs, Node *rhs)
-	: InnerNode(NodeType::BinOp, 0, 0)
+	: Node(Node::Type::BinOp, 0, 0)
 {
 	this->lhs = lhs;
 	this->rhs = rhs;
@@ -156,7 +159,7 @@ mkstringify(DivisionNode, itoa_(evaluate()));
 /* === EnvVarNode === */
 
 EnvVarNode::EnvVarNode(char *name, bool delayedExpansion)
-	:super(NodeType::EnvVar, 0, 0),
+	:super(Node::Type::EnvVar, 0, 0),
 	 name(name),
 	 delayedExpansion(delayedExpansion)
 {
@@ -177,7 +180,7 @@ mkstringify(EnvVarNode, nullptr);
 
 /* === CallNode === */
 CallNode::CallNode(char *name, std::vector<Node*> arguments, bool silent = false)
-: super(NodeType::Call, 0, 0),
+: Node(Node::Type::Call | WITHCHILDREN, 0, 0),
   silent(silent),
   funcName(strdup(name)),
   hash(_hashfunc_(this->funcName, true))
@@ -185,7 +188,7 @@ CallNode::CallNode(char *name, std::vector<Node*> arguments, bool silent = false
 	this->children = new std::vector<Node*>(arguments);
 }
 
-uint64_t CallNode::evaluate(InterpreterState *state) {
+int CallNode::evaluate(InterpreterState *state) {
 	// todo stringify whole command
 
 	bool dontEcho = this->silent || state->echo;
@@ -216,14 +219,14 @@ mkstringify(CallNode, this->funcName);
 
 /* === EqualsNode === */
 AssignNode::AssignNode(Node *lhs, Node *rhs)
-	: super(NodeType::Assign, 0, 0)
+	: super(Node::Type::Assign, 0, 0)
 {
 	this->one.lhs = lhs;
 	this->one.rhs = rhs;
 }
 
 AssignNode::AssignNode(Node **lhs, int lhsCount, Node *rhs)
-	: super(NodeType::Assign | WITHCHILDREN, 0, 0)
+	: super(Node::Type::Assign | WITHCHILDREN, 0, 0)
 {
 	this->many.lhs = lhs;
 	this->many.rhs = rhs;
@@ -249,15 +252,15 @@ LabelNode::LabelNode(char *name, int pos)
  IdNode(name)
 {
 	this->str = name;
-	this->type = NodeType::Label;
+	this->type = Node::Type::Label;
 }
 
 mkstringify(LabelNode, this->str);
 
 /* === CompareNode === */
 
-CompareNode::CompareNode(LeafNode *lhs, LeafNode *rhs, CompareType compareType)
-	: super(NodeType::Compare, 0, 0),
+CompareNode::CompareNode(Node *lhs, Node *rhs, CompareType compareType)
+	: super(Node::Type::Compare, 0, 0),
 	cmpType(compareType)
 {
 	this->lhs = lhs;
@@ -265,43 +268,43 @@ CompareNode::CompareNode(LeafNode *lhs, LeafNode *rhs, CompareType compareType)
 
 	switch(compareType) {
 	case CompareType::GTR: {
-		this->cmpFunc = [](LeafNode *lhs, LeafNode *rhs, bool caseInsensitive) {
+		this->cmpFunc = [](Node *lhs, Node *rhs, bool caseInsensitive) {
 			return lhs->num > rhs->num;
 		};
 		break;
 	}
 	case CompareType::LSS: {
-		this->cmpFunc = [](LeafNode *lhs, LeafNode *rhs, bool caseInsensitive) {
+		this->cmpFunc = [](Node *lhs, Node *rhs, bool caseInsensitive) {
 			return lhs->num < rhs->num;
 		};
 		break;
 	}
 	case CompareType::GEQ: {
-		this->cmpFunc = [](LeafNode *lhs, LeafNode *rhs, bool caseInsensitive) {
+		this->cmpFunc = [](Node *lhs, Node *rhs, bool caseInsensitive) {
 			return lhs->num >= rhs->num;
 		};
 		break;
 	}
 	case CompareType::LEQ: {
-		this->cmpFunc = [](LeafNode *lhs, LeafNode *rhs, bool caseInsensitive) {
+		this->cmpFunc = [](Node *lhs, Node *rhs, bool caseInsensitive) {
 			return lhs->num <= rhs->num;
 		};
 		break;
 	}
 	case CompareType::EQU: {
-		this->cmpFunc = [](LeafNode *lhs, LeafNode *rhs, bool caseInsensitive) {
+		this->cmpFunc = [](Node *lhs, Node *rhs, bool caseInsensitive) {
 			return lhs->num == rhs->num;
 		};
 		break;
 	}
 	case CompareType::NEQ: {
-		this->cmpFunc = [](LeafNode *lhs, LeafNode *rhs, bool caseInsensitive) {
+		this->cmpFunc = [](Node *lhs, Node *rhs, bool caseInsensitive) {
 			return lhs->num != rhs->num;
 		};
 		break;
 	}
 	case CompareType::STRING: {
-		this->cmpFunc = [](LeafNode *lhs, LeafNode *rhs, bool caseInsensitive) {
+		this->cmpFunc = [](Node *lhs, Node *rhs, bool caseInsensitive) {
 			//printf("%s %s\n", lhs->str, rhs->str);
 			if(caseInsensitive) return strcasecmp(lhs->str, rhs->str) == 0;
 			else return strcmp(lhs->str, rhs->str) == 0;
@@ -309,13 +312,13 @@ CompareNode::CompareNode(LeafNode *lhs, LeafNode *rhs, CompareType compareType)
 		break;
 	}
 	case CompareType::EXISTS: {
-		this->cmpFunc = [](LeafNode *lhs, LeafNode *rhs, bool caseInsensitive) {
+		this->cmpFunc = [](Node *lhs, Node *rhs, bool caseInsensitive) {
 			return access(lhs->str, F_OK) == 0;
 		};
 		break;
 	}
 	case CompareType::DEFINED: {
-		this->cmpFunc = [](LeafNode *lhs, LeafNode *rhs, bool caseInsensitive) {
+		this->cmpFunc = [](Node *lhs, Node *rhs, bool caseInsensitive) {
 			return getenv(lhs->str) != NULL;
 		};
 		break;
@@ -323,19 +326,21 @@ CompareNode::CompareNode(LeafNode *lhs, LeafNode *rhs, CompareType compareType)
 	}
 }
 
-uint64_t CompareNode::evaluate(bool caseInsensitive = false) {
-	return this->cmpFunc((LeafNode*)(this->lhs), (LeafNode*)(this->rhs), caseInsensitive);
+bool CompareNode::evaluate(bool caseInsensitive = false) {
+	return this->cmpFunc(this->lhs, this->rhs, caseInsensitive);
 }
 
 mkstringify(CompareNode, nullptr);
 
 /* == ForNode == */
 // params = /type "opts" ()
-ForNode::ForNode(ForType type, char id, ParenthesesNode *cond, EvaluatableNode *body)
-	: super(NodeType::For, 0, 0),
+ForNode::ForNode(ForType type, char id, ParenthesesNode *cond, Node *body, StringNode *opts = nullptr)
+	: super(Node::Type::For, 0, 0),
 	forType(type),
 	id(id),
-	loopBody(body)
+	loopBody(body),
+	opts(opts),
+	cond(cond)
 {
 	// if(params[0]->type == LN(LNODE_SWITCH)) {
 	// 	SwitchNode *sw = params[0];
@@ -402,8 +407,8 @@ uint64_t ForNode::evaluate(InterpreterState *state) {
 
 mkstringify(ForNode, nullptr);
 
-IfNode::IfNode(CompareNode *cond, EvaluatableNode *ifBodyRoot, EvaluatableNode *elseBodyRoot = nullptr, bool invert = false, bool caseInsensitive = false)
-	: super(NodeType::If, 0, 0),
+IfNode::IfNode(CompareNode *cond, Node *ifBodyRoot, Node *elseBodyRoot = nullptr, bool invert = false, bool caseInsensitive = false)
+	: super(Node::Type::If, 0, 0),
 	condition(cond),
 	sucess(ifBodyRoot),
 	failure(elseBodyRoot),
@@ -412,7 +417,7 @@ IfNode::IfNode(CompareNode *cond, EvaluatableNode *ifBodyRoot, EvaluatableNode *
 {
 }
 
-uint64_t IfNode::evaluate(InterpreterState *state) {
+int IfNode::evaluate(InterpreterState *state) {
 	if(this->condition->evaluate(this->caseInsensitive) || this->invert) {
 		//eval(this->sucess, state);
 		this->sucess->evaluate(state);

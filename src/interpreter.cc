@@ -39,7 +39,7 @@ Interpreter::Interpreter(char *buffer, size_t size)
 	state.bufferSize = size;
 
 	for(auto n : this->nodes) {
-		if((n->type & BARETYPE) == NodeType::Label) {
+		if((n->type & BARETYPE) == Node::Type::Label) {
 			LabelNode *ln = n;
 			this->state.labels[_hashfunc_(ln->str)] = ln->pos;
 		}
@@ -47,11 +47,9 @@ Interpreter::Interpreter(char *buffer, size_t size)
 }
 
 int Interpreter::interpret() {
-	// loop over root nodes
 	int &i = this->state.filepos;
 	for(; i < this->nodes.size(); i++) {
-		//eval(nodes[i], &this->state);
-		TCAST(EvaluatableNode *, nodes[i])->evaluate(&this->state);
+		nodes[i]->evaluate(&this->state);
 	}
 
 	return 0;

@@ -3,8 +3,8 @@
 #include <cstddef>
 #include <vector>
 
-struct TokenType {
-	enum {
+struct Token {
+	enum Type {
 		Inval = -1,
 		Eof = 0,
 		Space,
@@ -57,9 +57,7 @@ struct TokenType {
 		Else,
 		In,
 	};
-};
 
-struct Token {
 	int type;
 	uint64_t value;
 	uint64_t additionalData;

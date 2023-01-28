@@ -1,0 +1,12 @@
+command1 arg1 arg2 || command2
+command1 arg1 arg2 && command2
+command1 arg1 arg2 & command2
+
+set x=(anothercommand args)
+set y=(1+1)*3
+
+for /l x (1,1,10) (
+	command
+)
+
+for /l x (1,1,10) command
