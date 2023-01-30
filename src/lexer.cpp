@@ -7,6 +7,8 @@
 
 #include "commands.hh"
 
+#include <patterns/patterns.hpp>
+
 static char *strndup(const char *str, size_t chars) {
 	char *buffer = calloc(chars +1, sizeof (char));
 	if (!buffer) return nullptr;
@@ -15,46 +17,76 @@ static char *strndup(const char *str, size_t chars) {
 	return buffer;
 }
 
+decltype(multicharMapping) multicharTokens = {
+	fe("do", Token::Type::Do, nullptr)
+	fe("else", Token::Type::Else, nullptr)
+	fe("in", Token::Type::In, nullptr)
+	fe("for", Token::Type::For, nullptr)
+	fe("if", Token::Type::If, nullptr)
+
+	fe("gtr", Token::Type::Gtr, nullptr)
+	fe("geq", Token::Type::Geq, nullptr)
+	fe("lss", Token::Type::Lss, nullptr)
+	fe("leq", Token::Type::Leq, nullptr)
+	fe("equ", Token::Type::Equ, nullptr)
+	fe("neq", Token::Type::Neq, nullptr)
+};
+
 Lexer::Lexer(uint8_t *buffer, size_t size)
  : buffer(buffer),
    length(size),
    idx(0)
 {
+	for (auto &it : multicharTokens) {
+		multicharMapping.insert(it);
+	}
 }
 
 Token Lexer::get() {
 	// i guess table could also work for simple tokens
 #define ReturnToken(x) idx++; return (Token){x, 0, 0, idx-1, 1}
+#define ReturnToken1(x, y) idx+=y; return (Token){x, 0, 0, idx-y, 1}
 
-	switch(buffer[idx]) {
-	case '(': ReturnToken(Token::Type::Leftparen);
-	case ')': ReturnToken(Token::Type::Rightparen);
-	case '<': ReturnToken(Token::Type::PipeIn);
-	case '>': ReturnToken(Token::Type::PipeOut);
-	case '=': ReturnToken(Token::Type::Equals);
-	case '+': ReturnToken(Token::Type::Plus);
-	case '-': ReturnToken(Token::Type::Minus);
-	case '*': ReturnToken(Token::Type::Asterisk);
-	case '/': ReturnToken(Token::Type::Slash);
-	case '.': ReturnToken(Token::Type::Dot);
-	case ',': ReturnToken(Token::Type::Comma);
-	case ':': ReturnToken(Token::Type::Colon);
-	case ';': ReturnToken(Token::Type::Semicolon);
-	case '|': ReturnToken(Token::Type::Pipe);
-	case '%': ReturnToken(Token::Type::Percent);
-	case '~': ReturnToken(Token::Type::Tilde);
-	case '&': ReturnToken(Token::Type::And);
-	case '@': ReturnToken(Token::Type::At);
-	case '!': ReturnToken(Token::Type::Exclamation);
-	case '\'':
-	case '"': {
+	static auto processQuotes = [&] {
 		char x = buffer[idx++];
 		size_t orig_idx = idx;
 		while(buffer[idx++] != x);
-		return (Token){(buffer[orig_idx-1] == '"')? Token::Type::String : Token::Type::SinglequoteString, strndup(&buffer[orig_idx], idx-1-orig_idx), idx-1-orig_idx, orig_idx-1, idx-orig_idx+1};
-	}
-	case '\n': ReturnToken(Token::Type::Space);
-	default: break;
+		return (Token){(buffer[orig_idx-1] == '"')? Token::Type::String : Token::Type::SingleQuoteString, strndup(&buffer[orig_idx], idx-1-orig_idx), idx-1-orig_idx, orig_idx-1, idx-orig_idx+1};
+	};
+
+	Token t = match(buffer[idx], buffer[idx+1], buffer[idx+2]) (
+		pattern('=', '=', _) = [&] { ReturnToken1(Token::Type::Dequal, 2); },
+		pattern('>', '>', _) = [&] { ReturnToken(Token::Type::PipeOutAppend); },
+		pattern('|', '|', _) = [&] { ReturnToken1(Token::Type::Or, 2); },
+		pattern('&', '&', _) = [&] { ReturnToken1(Token::Type::And, 2); },
+
+		pattern('(', _, _) = [&] { ReturnToken(Token::Type::LeftParen); },
+		pattern(')', _, _) = [&] { ReturnToken(Token::Type::RightParen); },
+		pattern('<', _, _) = [&] { ReturnToken(Token::Type::PipeIn); },
+		pattern('>', _, _) = [&] { ReturnToken(Token::Type::PipeOut); },
+		pattern('=', _, _) = [&] { ReturnToken(Token::Type::Equals); },
+		pattern('+', _, _) = [&] { ReturnToken(Token::Type::Plus); },
+		pattern('-', _, _) = [&] { ReturnToken(Token::Type::Minus); },
+		pattern('*', _, _) = [&] { ReturnToken(Token::Type::Asterisk); },
+		pattern('/', _, _) = [&] { ReturnToken(Token::Type::Slash); },
+		pattern('.', _, _) = [&] { ReturnToken(Token::Type::Dot); },
+		pattern(',', _, _) = [&] { ReturnToken(Token::Type::Comma); },
+		pattern(':', _, _) = [&] { ReturnToken(Token::Type::Colon); },
+		pattern(';', _, _) = [&] { ReturnToken(Token::Type::Semicolon); },
+		pattern('|', _, _) = [&] { ReturnToken(Token::Type::Pipe); },
+		pattern('%', _, _) = [&] { ReturnToken(Token::Type::Percent); },
+		pattern('~', _, _) = [&] { ReturnToken(Token::Type::Tilde); },
+		pattern('&', _, _) = [&] { ReturnToken(Token::Type::BitwiseAnd); },
+		pattern('@', _, _) = [&] { ReturnToken(Token::Type::At); },
+		pattern('!', _, _) = [&] { ReturnToken(Token::Type::Exclamation); },
+		pattern('\n', _, _) = [&] { ReturnToken(Token::Type::Space); },
+		pattern('\'', _, _) = processQuotes,
+		pattern('"', _, _) = processQuotes,
+		pattern(_, _, _) = [&] { return (Token){Token::Type::Inval, 0, 0, 0, 0}; }
+	);
+
+	if(t.type != Token::Type::Inval) {
+		return t;
 	}
 
 	if(isdigit(buffer[idx])) {

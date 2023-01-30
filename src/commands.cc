@@ -1,3 +1,4 @@
+#include "commands.hh"
 #include "shared.hh"
 #include "lexer.hpp"
 
@@ -56,6 +57,7 @@ IFUN(doCls) {
 }
 
 IFUN(doEcho) {
+	printf("%s\n", (*callParams.params)[0]->evaluate());
 	return 0;
 }
 
@@ -311,21 +313,7 @@ IFUN(doPath) {
 extern IFUN(doInject);
 #endif
 
-#define fe(x,y,z) {consthash(x), { y,z } },
 std::unordered_map<_hashtype_, std::pair<decltype(Token::type), CallPtr>, Hasher> multicharMapping = {
-	fe("do", Token::Type::Do, nullptr)
-	fe("else", Token::Type::Else, nullptr)
-	fe("in", Token::Type::In, nullptr)
-	fe("for", Token::Type::For, nullptr)
-	fe("if", Token::Type::If, nullptr)
-
-	fe("gtr", Token::Type::Gtr, nullptr)
-	fe("geq", Token::Type::Geq, nullptr)
-	fe("lss", Token::Type::Lss, nullptr)
-	fe("leq", Token::Type::Leq, nullptr)
-	fe("equ", Token::Type::Equ, nullptr)
-	fe("neq", Token::Type::Neq, nullptr)
-
 	fe("call", Token::Type::BuiltIn, doCall)
 	fe("cd", Token::Type::BuiltIn, doChdir)
 	fe("chdir", Token::Type::BuiltIn, doChdir)

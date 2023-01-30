@@ -21,7 +21,7 @@
 struct InterpreterState;
 struct Node {
 	enum Type {
-		Parentheses = NTP(1, 0),
+		Parentheses	= NTP(1, 0),
 		BinOp		= NTP(1, 1),
 		Assign		= NTP(1, 2),
 		Compare		= NTP(1, 3),
@@ -64,6 +64,7 @@ struct Node {
 struct NumberNode final : public Node {
 	NumberNode(int n);
 	stringifyfun;
+	operator int() const override;
 };
 
 struct StringNode : public Node {
@@ -92,6 +93,7 @@ struct ParenthesesNode : public Node {
 struct BinOpNode : public Node {
 	BinOpNode(Node *lhs, Node *rhs);
 	virtual int evaluate() = 0;
+	operator int() const override;
 	typedef BinOpNode super;
 };
 
@@ -200,6 +202,7 @@ struct ForNode final : public Node {
 //private:
 	std::function<bool()> loopCond;
 	std::function<void()> inc;
+	std::function<void()> setEnv;
 	Node *loopBody;
 	StringNode *opts; // todo remove, further parse
 	ParenthesesNode *cond; //todo remove

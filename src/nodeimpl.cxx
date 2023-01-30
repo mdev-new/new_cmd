@@ -37,6 +37,8 @@ uint64_t Node::evaluate(InterpreterState *s = nullptr) {
 	case Node::Type::For: return TCAST(ForNode*, this)->evaluate(s);
 	case Node::Type::Call: return TCAST(CallNode*, this)->evaluate(s);
 	case Node::Type::BinOp: return TCAST(BinOpNode*, this)->evaluate();
+	case Node::Type::EnvVar: return TCAST(EnvVarNode*, this)->evaluate();
+	case Node::Type::Parentheses: return TCAST(ParenthesesNode*, this)->evaluate(s);
 	case Node::Type::Number: return TCAST(NumberNode*, this)->num;
 	default: printf("hit default! %d\n", this->type); return 0;
 	}
@@ -45,6 +47,8 @@ uint64_t Node::evaluate(InterpreterState *s = nullptr) {
 Node::operator int() const {
 	switch(this->type) {
 	case Node::Type::EnvVar: return int(*TCAST(EnvVarNode*, this));
+	case Node::Type::Number: return int(*TCAST(EnvVarNode*, this));
+	case Node::Type::BinOp: return int(*TCAST(EnvVarNode*, this));
 	default: return 0;
 	}
 }
@@ -58,6 +62,11 @@ NumberNode::NumberNode(int n)
 }
 
 mkstringify(NumberNode, itoa_(this->num));
+
+NumberNode::operator int() const {
+	return this->num;
+}
+
 
 /* === StringNode === */
 
@@ -123,6 +132,10 @@ BinOpNode::BinOpNode(Node *lhs, Node *rhs)
 	this->rhs = rhs;
 }
 
+BinOpNode::operator int() const {
+	return evaluate();
+}
+
 
 /* === AdditionNode === */
 
@@ -175,7 +188,7 @@ EnvVarNode::operator int() const {
 	return atoi(evaluate());
 }
 
-mkstringify(EnvVarNode, nullptr);
+mkstringify(EnvVarNode, evaluate());
 
 
 /* === CallNode === */
@@ -342,56 +355,40 @@ ForNode::ForNode(ForType type, char id, ParenthesesNode *cond, Node *body, Strin
 	opts(opts),
 	cond(cond)
 {
-	// if(params[0]->type == LN(LNODE_SWITCH)) {
-	// 	SwitchNode *sw = params[0];
-	// 	if(strcasecmp(sw->str, "L") == 0) this->forType = ForType::NUMBERS;
-	// 	else if(strcasecmp(sw->str, "R") == 0) this->forType = ForType::FILESROOTED;
-	// 	else if(strcasecmp(sw->str, "D")) this->forType = ForType::FOLDERS;
-	// 	else if(strcasecmp(sw->str, "F")) {
-	// 		ParenthesesNode *pn = params[2];
-	// 		if(pn->children[0]->type == LNODE_STRING) {
-	// 			StringNode *str = pn->children[0];
-	// 			if(str->singlequote) this->forType = ForType::CMDRESULTS;
-	// 			else this->forType = ForType::STRINGCONTENTS;
-	// 		} else {
-	// 			this->forType = ForType::FILECONTENTS;
-	// 		}
-	// 	}
-
-	// 	this->id = TCAST(IdNode*, params[1])->str[0];
-	// } else {
-	// 	this->forType = ForType::FILES;
-	// 	this->id = TCAST(IdNode*, params[0])->str[0];
-	// }
-
 	switch(this->forType) {
 	case ForType::FILES: {
-		this->loopCond = [this]() { return true; };
+		this->loopCond = [this] { return true; };
 		break;
 	}
 	case ForType::FILESROOTED: {
-		this->loopCond = [this]() { return true; };
+		this->loopCond = [this] { return true; };
 		break;
 	}
 	case ForType::FOLDERS: {
-		this->loopCond = [this]() { return true; };
+		this->loopCond = [this] { return true; };
 		break;
 	}
 	case ForType::NUMBERS: {
-		this->loopCond = [this]() { return this->range.current <= this->range.end; };
-		this->inc = [this]() { this->range.current++; };
+		this->loopCond = [this] { return this->range.current <= this->range.end; };
+		this->inc = [this] { this->range.current += this->range.step; };
+		this->setEnv = [this] { char c[2] = {this->id, 0}; setenv(c, itoa_(this->range.current), true); };
+
+		this->range.start = (*cond->children)[0]->num;
+		this->range.step = (*cond->children)[1]->num;
+		this->range.end = (*cond->children)[2]->num;
+		this->range.current = this->range.start;
 		break;
 	}
 	case ForType::FILECONTENTS: {
-		this->loopCond = [this]() { return true; };
+		this->loopCond = [this] { return true; };
 		break;
 	}
 	case ForType::STRINGCONTENTS: {
-		this->loopCond = [this]() { return true; };
+		this->loopCond = [this] { return true; };
 		break;
 	}
 	case ForType::CMDRESULTS: {
-		this->loopCond = [this]() { return true; };
+		this->loopCond = [this] { return true; };
 		break;
 	}
 	}
@@ -399,6 +396,7 @@ ForNode::ForNode(ForType type, char id, ParenthesesNode *cond, Node *body, Strin
 
 uint64_t ForNode::evaluate(InterpreterState *state) {
 	for(; this->loopCond(); this->inc()) {
+		this->setEnv();
 		this->loopBody->evaluate(state);
 	}
 

@@ -39,7 +39,7 @@ void prettyPrint(int level, Node *n) {
 	if(n == nullptr) return;
 	printf("[%s]", __FILE__);
 	for(int l = -1; l < 2*level; l++) printf(" ");
-	//putc('(', stdout); print_binary<unsigned short>(n->type); printf(") ");
+	putc('(', stdout); print_binary<unsigned short>(n->type); printf(") ");
 	auto [_1, _2] = n->stringify();
 	printf("%s |%s|\n", _1, _2);
 
@@ -111,13 +111,13 @@ int main(int argc, char *argv[], char *envp[]) {
 	timersub(&tval_after, &tval_before, &tval_result);
 	fprintf(stderr, "[%s] Parsing took:\t%ld.%06ld\n", __FILE__, (long int)tval_result.tv_sec, (long int)tval_result.tv_usec);
 
-	for(Node *n : intp.nodes) prettyPrint(0, n);
+	//for(Node *n : intp.nodes) prettyPrint(0, n);
 
 	int retncode = 0;
 
 	gettimeofday(&tval_before, NULL);
 
-	//retncode = intp.interpret();
+	retncode = intp.interpret();
 
 	gettimeofday(&tval_after, NULL);
 	timersub(&tval_after, &tval_before, &tval_result);

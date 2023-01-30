@@ -1,1 +1,1 @@
-for /l x (1,1,10) ver
+fOr /L x (0,1,750000) vEr

@@ -3,9 +3,6 @@
 #include "shared.hh"
 #include "parser.hpp"
 
-// evaluate root node or node without specific parameters
-//uint64_t eval(Node *n, InterpreterState *state = nullptr);
-
 class Interpreter {
 	Parser parser;
 	InterpreterState state = {

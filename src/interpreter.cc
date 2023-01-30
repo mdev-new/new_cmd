@@ -22,15 +22,6 @@
 	return hash;
 }
 
-// evaluate root node or node without specific parameters
-// uint64_t eval(CallableNode *n, InterpreterState *state = nullptr) {
-// 	switch(n->type) {
-// 	case NodeType::If: return n->evaluate(state);
-// 	case NodeType::Call: return n->evaluate(state);
-// 	default: return 0;
-// 	}
-// }
-
 Interpreter::Interpreter(char *buffer, size_t size)
  : parser(buffer, size)
 {
