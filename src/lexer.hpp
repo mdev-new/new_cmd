@@ -11,41 +11,44 @@ struct Token {
 		Id,
 		Number,
 		String,
-		SingleQuoteString = 5,
+		SingleQuoteString,
 
 		// created artificially by parser
 		Switch = 6,
 		Label,
 		// ---
+
 		Dequal,
 
-		LeftParen = 9,
-		RightParen = 10,
-		Equals,
-		Plus,
-		Minus,
-		Asterisk,
-		Slash = 15,
+		LeftParen,
+		RightParen,
 		Dot,
 		Comma,
 		Colon,
 		Semicolon,
 		SingleQuote,
 		DoubleQuote,
-		Percent,
-		Tilde,
-		BitwiseAnd,
 		At,
 
 		Exclamation,
+		Equals,
+		Percent,
+		Tilde,
 
 		Pipe, // |
 		PipeIn, // <
 		PipeOut, // >
 		PipeOutAppend, // >>
-		Or,
-		And,
 
+		Plus,
+		Minus,
+		Asterisk,
+		Slash,
+		And,
+		Caret,
+		LogicalOr,
+		LogicalAnd,
+		
 		Lss,
 		Gtr,
 		Geq,
@@ -58,8 +61,7 @@ struct Token {
 		Do,
 		If,
 		Else,
-		In,
-		EnvVar
+		In
 	};
 
 	int type;

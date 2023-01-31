@@ -39,9 +39,13 @@ void prettyPrint(int level, Node *n) {
 	if(n == nullptr) return;
 	printf("[%s]", __FILE__);
 	for(int l = -1; l < 2*level; l++) printf(" ");
-	putc('(', stdout); print_binary<unsigned short>(n->type); printf(") ");
 	auto [_1, _2] = n->stringify();
-	printf("%s |%s|\n", _1, _2);
+	printf("%s |%s| ", _1, _2);
+#if 0
+	putc('(', stdout); print_binary<unsigned short>(n->type); printf(") \n");
+#else
+	printf("\n");
+#endif
 
 	if(n->type & 1) { // inner
 		if((n->type & BARETYPE) == Node::Type::If) {
@@ -79,11 +83,15 @@ void prettyPrint(int level, Node *n) {
 int main(int argc, char *argv[], char *envp[]) {
 	setenv("mbat_version", "001al", true);
 	if(argc < 2) {
+		auto s = new InterpreterState {
+			.echo = true,
+			.filepos = 0
+		};
 		char line[512], path[4096];
 		printf("%s> ", getcwd(path, 4096));
 		while(fgets(line, sizeof line, stdin) != NULL) {
-			Interpreter(line, strlen(line)).interpret();
-			printf("%s> ", getcwd(path, 4096));
+			Interpreter(line, strlen(line), s).interpret();
+			printf("%s> ", getcwd(path, sizeof path));
 		}
 
 		return 0;
@@ -111,7 +119,9 @@ int main(int argc, char *argv[], char *envp[]) {
 	timersub(&tval_after, &tval_before, &tval_result);
 	fprintf(stderr, "[%s] Parsing took:\t%ld.%06ld\n", __FILE__, (long int)tval_result.tv_sec, (long int)tval_result.tv_usec);
 
-	//for(Node *n : intp.nodes) prettyPrint(0, n);
+#ifndef VALGRIND_BUILD
+	for(Node *n : intp.nodes) prettyPrint(0, n);
+#endif
 
 	int retncode = 0;
 

@@ -97,29 +97,27 @@ struct BinOpNode : public Node {
 	typedef BinOpNode super;
 };
 
-struct AdditionNode final : public BinOpNode {
-	using BinOpNode::BinOpNode;
-	int evaluate() override;
-	stringifyfun;
-};
+#define MakeBinOp(name) \
+struct name final : public BinOpNode {\
+	using BinOpNode::BinOpNode;\
+	int evaluate() override;\
+	stringifyfun;\
+}
 
-struct SubtractionNode final : public BinOpNode {
-	using BinOpNode::BinOpNode;
-	int evaluate() override;
-	stringifyfun;
-};
+MakeBinOp(AdditionNode);
+MakeBinOp(SubtractionNode);
+MakeBinOp(DivisionNode);
+MakeBinOp(MultiplicationNode);
+MakeBinOp(BinaryOrNode);
+MakeBinOp(BinaryAndNode);
+MakeBinOp(BinaryNot);
+MakeBinOp(BinaryModulo);
+MakeBinOp(BinaryXor);
+MakeBinOp(LogicalOrNode);
+MakeBinOp(LogicalAndNode);
+MakeBinOp(LogicalNot);
 
-struct MultiplicationNode final : public BinOpNode {
-	using BinOpNode::BinOpNode;
-	int evaluate() override;
-	stringifyfun;
-};
-
-struct DivisionNode final : public BinOpNode {
-	using BinOpNode::BinOpNode;
-	int evaluate() override;
-	stringifyfun;
-};
+#undef MakeBinOp
 
 struct EnvVarNode final : public Node {
 	char *name, *value = nullptr;

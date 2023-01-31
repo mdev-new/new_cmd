@@ -236,10 +236,13 @@ IFUN(doPushd) {
 		chdir(dir);
 	}
 
+	//printf("pushed: %s\n", callParams.state->directoryStack.top());
+
 	return 0;
 }
 
 IFUN(doPopd) {
+	//printf("popping: %s\n", callParams.state->directoryStack.top());
 	chdir(callParams.state->directoryStack.top());
 	callParams.state->directoryStack.pop();
 	return 0;

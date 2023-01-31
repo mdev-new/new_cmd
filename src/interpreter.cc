@@ -22,25 +22,34 @@
 	return hash;
 }
 
-Interpreter::Interpreter(char *buffer, size_t size)
+Interpreter::Interpreter(char *buffer, size_t size, InterpreterState *s = nullptr)
  : parser(buffer, size)
 {
+	if(s == nullptr) {
+		this->state = new InterpreterState {
+			.echo = true,
+			.filepos = 0,
+			.buffer = buffer,
+			.bufferSize = size
+		};
+	} else {
+		this->state = s;
+	}
+
 	parser.parse();
-	state.buffer = buffer;
-	state.bufferSize = size;
 
 	for(auto n : this->nodes) {
 		if((n->type & BARETYPE) == Node::Type::Label) {
 			LabelNode *ln = n;
-			this->state.labels[_hashfunc_(ln->str)] = ln->pos;
+			this->state->labels[_hashfunc_(ln->str)] = ln->pos;
 		}
 	}
 }
 
 int Interpreter::interpret() {
-	int &i = this->state.filepos;
+	int &i = this->state->filepos;
 	for(; i < this->nodes.size(); i++) {
-		nodes[i]->evaluate(&this->state);
+		nodes[i]->evaluate(this->state);
 	}
 
 	return 0;

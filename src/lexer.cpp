@@ -9,6 +9,8 @@
 
 #include <patterns/patterns.hpp>
 
+// todo regex
+
 static char *strndup(const char *str, size_t chars) {
 	char *buffer = calloc(chars +1, sizeof (char));
 	if (!buffer) return nullptr;
@@ -51,14 +53,20 @@ Token Lexer::get() {
 		char x = buffer[idx++];
 		size_t orig_idx = idx;
 		while(buffer[idx++] != x);
-		return (Token){(buffer[orig_idx-1] == '"')? Token::Type::String : Token::Type::SingleQuoteString, strndup(&buffer[orig_idx], idx-1-orig_idx), idx-1-orig_idx, orig_idx-1, idx-orig_idx+1};
+		return (Token){
+			(buffer[orig_idx-1] == '"')? Token::Type::String : Token::Type::SingleQuoteString,
+			strndup(&buffer[orig_idx], idx-1-orig_idx),
+			idx-1-orig_idx,
+			orig_idx-1,
+			idx-orig_idx+1
+		};
 	};
 
 	Token t = match(buffer[idx], buffer[idx+1], buffer[idx+2]) (
 		pattern('=', '=', _) = [&] { ReturnToken1(Token::Type::Dequal, 2); },
 		pattern('>', '>', _) = [&] { ReturnToken(Token::Type::PipeOutAppend); },
-		pattern('|', '|', _) = [&] { ReturnToken1(Token::Type::Or, 2); },
-		pattern('&', '&', _) = [&] { ReturnToken1(Token::Type::And, 2); },
+		pattern('|', '|', _) = [&] { ReturnToken1(Token::Type::LogicalOr, 2); },
+		pattern('&', '&', _) = [&] { ReturnToken1(Token::Type::LogicalAnd, 2); },
 
 		pattern('(', _, _) = [&] { ReturnToken(Token::Type::LeftParen); },
 		pattern(')', _, _) = [&] { ReturnToken(Token::Type::RightParen); },
@@ -76,7 +84,7 @@ Token Lexer::get() {
 		pattern('|', _, _) = [&] { ReturnToken(Token::Type::Pipe); },
 		pattern('%', _, _) = [&] { ReturnToken(Token::Type::Percent); },
 		pattern('~', _, _) = [&] { ReturnToken(Token::Type::Tilde); },
-		pattern('&', _, _) = [&] { ReturnToken(Token::Type::BitwiseAnd); },
+		pattern('&', _, _) = [&] { ReturnToken(Token::Type::And); },
 		pattern('@', _, _) = [&] { ReturnToken(Token::Type::At); },
 		pattern('!', _, _) = [&] { ReturnToken(Token::Type::Exclamation); },
 		pattern('\n', _, _) = [&] { ReturnToken(Token::Type::Space); },

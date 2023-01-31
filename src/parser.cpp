@@ -16,11 +16,12 @@
 
 #include <utility>
 
-//#include "patterns/patterns.hpp"
-
+#include <patterns/patterns.hpp>
 #include <magic_enum.hpp>
 
 #define TCAST(type, val) ((type)val)
+
+// this whole thing probably needs a full rewrite, using something like expect() and consume()...
 
 // stackoverflow saved my ass
 template <typename t> void move(std::vector<t>& v, size_t oldIndex, size_t newIndex) {
@@ -30,81 +31,108 @@ template <typename t> void move(std::vector<t>& v, size_t oldIndex, size_t newIn
 		std::rotate(v.begin() + oldIndex, v.begin() + oldIndex + 1, v.begin() + newIndex + 1);
 }
 
+// stage 2 lexer basically
+int SortTokens(std::vector<Token> &tokens, int start, int breaktok) {
+	long i = start, skip = 0, parenStart = 0;
+
+	static auto parens = [&] {
+		parenStart = i;
+		skip = SortTokens(tokens, i+1, Token::Type::RightParen);
+	};
+
+	static auto sortBinOps = [&] {
+		move(tokens, i, parenStart);
+		parenStart = 0;
+	};
+
+	static auto prefix = [&] {
+		std::swap(tokens[i-1], tokens[i]);
+	};
+
+	static auto sw = [&] {
+		char pref = (tokens[i].type == Token::Type::Slash)? '/' : '-';
+		tokens.erase(tokens.begin() + i);
+		tokens[i] = (Token){Token::Type::Switch, tokens[i].value, pref};
+	};
+
+	static auto label = [&] {
+		char pref = ':';
+		tokens.erase(tokens.begin() + i);
+		tokens[i+1] = (Token){Token::Type::Label, tokens[i+1].value, pref};
+	};
+
+	for(; breaktok? (tokens[i].type != breaktok && i < tokens.size()-1) : (i < tokens.size()-1); i+=skip, skip=1) {
+		match(tokens[i].type, tokens[i+1].type, tokens[i+2].type) (
+			pattern(Token::Type::LeftParen, _, _) = parens,
+
+			pattern(Token::Type::RightParen, anyof(
+				Token::Type::Plus,
+				Token::Type::Minus,
+				Token::Type::Asterisk,
+				Token::Type::Slash,
+				Token::Type::And,
+				Token::Type::Caret,
+				Token::Type::Pipe,
+				Token::Type::Caret
+			), _) = sortBinOps,
+
+			pattern(Token::Type::Number, anyof(
+				Token::Type::Plus,
+				Token::Type::Minus,
+				Token::Type::Asterisk,
+				Token::Type::Slash,
+				Token::Type::And,
+				Token::Type::Caret,
+				Token::Type::Pipe,
+				Token::Type::Caret
+			), _) = prefix,
+
+			pattern(anyof(
+				Token::Type::Gtr,
+				Token::Type::Lss,
+				Token::Type::Geq,
+				Token::Type::Leq,
+				Token::Type::Equ,
+				Token::Type::Neq
+			), _, _) = prefix,
+
+			// todo reduce multiple consecutive slashes
+			// todo move rhs to the front (incase thi happens =xyz0, =0xyz would be easier to parse)
+			pattern(Token::Type::Equals, _, _) = prefix,
+			pattern(Token::Type::Dequal, _, _) = prefix,
+
+			pattern(Token::Type::Slash, Token::Type::Id, _) = sw,
+			pattern(Token::Type::Minus, Token::Type::Id, _) = sw,
+
+			pattern(Token::Type::Colon, Token::Type::Id, _) = label,
+			pattern(_, _, _) = [&] { return; }
+		);
+
+		// todo support %%x and %%~x variables
+		// also support variable replacements and substitutions
+		// if(current.type == Token::Type::Percent && (tokens[i+1].type == Token::Type::Id || tokens[i+1].type == Token::Type::BuiltIn)) {
+		// 	tokens.erase(tokens.begin() + i);
+		// 	tokens.erase(tokens.begin() + i + 2);
+		// 	tokens[i] = current = (Token){Token::Type::EnvVar, tokens[i+1].value, false};
+		// 	continue;
+		// }
+	}
+
+	return i;
+}
+
 static std::unordered_set<decltype(Token::type)> command_terminators = {
 	Token::Type::Pipe,
-	Token::Type::BitwiseAnd,
-	Token::Type::And, Token::Type::PipeIn,
+	Token::Type::LogicalAnd,
+	Token::Type::And,
+	Token::Type::LogicalOr,
+	Token::Type::Pipe,
+	Token::Type::PipeIn,
 	Token::Type::PipeOut,
 	Token::Type::PipeOutAppend,
 	Token::Type::Space,
 	Token::Type::Eof
 };
-
-// stage 2 lexer basically
-int SortTokens(std::vector<Token> &tokens, int start, int breaktok) {
-	Token current = tokens[start], last = current;
-	long i = start, skip = 0, parenStart = 0;
-
-	for(; breaktok? (current.type != breaktok && i < tokens.size()-1) : (i < tokens.size()-1); i+=skip, skip=1) {
-		current = tokens[i];
-
-		if(current.type == Token::Type::LeftParen) {
-			parenStart = i;
-			skip = SortTokens(tokens, i+1, Token::Type::RightParen);
-			last = tokens[i+skip-1];
-			continue;
-		}
-
-		if(last.type == Token::Type::RightParen && current.type >= Token::Type::Plus && current.type <= Token::Type::Slash) {
-			move(tokens, i, parenStart);
-			parenStart = 0;
-		}
-
-		if((last.type == Token::Type::Number) && current.type >= Token::Type::Plus && current.type <= Token::Type::Slash) {
-			std::swap(tokens[i], tokens[i-1]);
-		}
-
-		switch(current.type) {
-		case Token::Type::Gtr:
-		case Token::Type::Lss:
-		case Token::Type::Geq:
-		case Token::Type::Leq:
-		case Token::Type::Equ:
-		case Token::Type::Neq:
-			std::swap(tokens[i], tokens[i-1]);
-		default: break;
-		}
-
-		// todo reduce multiple consecutive slashes
-		// todo move rhs to the front (incase thi happens =xyz0, =0xyz would be easier to parse)
-		if(current.type == Token::Type::Equals) std::swap(tokens[i], tokens[i-1]);
-
-		// todo support %%x and %%~x variables
-		// also support variable replacements and substitutions
-		if(current.type == Token::Type::Percent && (tokens[i+1].type == Token::Type::Id || tokens[i+1].type == Token::Type::BuiltIn)) {
-			tokens.erase(tokens.begin() + i);
-			tokens.erase(tokens.begin() + i + 2);
-			tokens[i] = current = (Token){Token::Type::EnvVar, tokens[i+1].value, false};
-			continue;
-		}
-
-		if ((last.type == Token::Type::Slash || last.type == Token::Type::Minus) && (current.type == Token::Type::String || current.type == Token::Type::Id)) {
-			char pref = (last.type == Token::Type::Slash)? '/' : '-';
-			tokens.erase(tokens.begin() + i-1);
-			tokens[i-1] = current = (Token){Token::Type::Switch, current.value, pref};
-		}
-
-		if (last.type == Token::Type::Colon && (current.type == Token::Type::String || current.type == Token::Type::Id)) {
-			char pref = ':';
-			tokens.erase(tokens.begin() + i-1);
-			tokens[i-1] = current = (Token){Token::Type::Label, current.value, pref};
-		}
-
-		last = current;
-	}
-
-	return i;
-}
 
 std::pair<int, Node*> makeNode(std::vector<Token> &tokens, int i, int level) {
 	switch(tokens[i].type) {
@@ -133,17 +161,14 @@ std::pair<int, Node*> makeNode(std::vector<Token> &tokens, int i, int level) {
 	}
 
 	case Token::Type::LeftParen: {
-		int j, skip = 1;
+		int j = i+1, skip = 1;
 		ParenthesesNode *n = new ParenthesesNode();
-		for(j = i+1; tokens[j].type != Token::Type::RightParen && tokens[j].type != Token::Type::Eof; j+=skip, skip=1) {
-			auto [ss, nn] = makeNode(tokens, j, 0);
-			if(nn == nullptr) { 
-				delete nn;
-				continue;
-			}
+		Node *current = nullptr;
+		for(; tokens[j].type != Token::Type::RightParen && tokens[j].type != Token::Type::Eof; j+=skip, skip=1) {
+			std::tie(skip, current) = makeNode(tokens, j, 0);
+			if(current == nullptr) continue;
 			//printf("Making node in parens: %s\n", magic_enum::enum_name((Node::Type)nn->type).data());
-			n->children->push_back(nn);
-			skip = ss;
+			n->children->push_back(current);
 		}
 
 		return std::make_pair(j-i+1, n);
@@ -270,7 +295,7 @@ std::pair<int, Node*> makeNode(std::vector<Token> &tokens, int i, int level) {
 		int _i = i+1, skip = 1;
 
 		CompareNode *cmp;
-		Node *sucessRoot = nullptr, *failureRoot = nullptr;
+		Node *sucessRoot = nullptr, *failureRoot = nullptr, *current = nullptr;
 		bool invert = false, caseInsensitive = false;
 		bool elseEncountered = false;
 
@@ -279,37 +304,37 @@ std::pair<int, Node*> makeNode(std::vector<Token> &tokens, int i, int level) {
 				elseEncountered = true;
 				continue;
 			}
-			auto [skp, nod] = makeNode(tokens, _i, level+1);
-			if(nod != nullptr) {
-				switch(nod->type & BARETYPE) {
-				case Node::Type::Compare: {
-					cmp = nod;
-					break;
-				}
-				case Node::Type::Switch: {
-					SwitchNode *sw = (SwitchNode *)(nod);
-					if(strcasecmp(sw->str, "i") == 0) caseInsensitive = true;
-					else if(strcasecmp(sw->str, "not") == 0) invert = true;
-					break;
-				}
-				// case Node::Type::Id: {
-				// 	// IdNode *id = (IdNode *)(nod);
-				// 	// if(strcasecmp(id->str, "defined") == 0) 
-				// 	// else if(strcasecmp(id->str, "exist") == 0)
-				// 	break;
-				// }
-				case Node::Type::Parentheses:
-				case Node::Type::Call: {
-					//printf("%s\n", nod->stringify().first);
-					if(elseEncountered) failureRoot = nod;
-					else sucessRoot = nod;
-					break;
-				}
-				default: break;
-				}
-			} else delete nod;
-		}
+			std::tie(skip, current) = makeNode(tokens, _i, level+1);
+			if(current == nullptr) continue;
 
+			switch(current->type & BARETYPE) {
+			case Node::Type::Compare: {
+				cmp = current;
+				break;
+			}
+			case Node::Type::Switch: {
+				SwitchNode *sw = (SwitchNode *)(current);
+				if(strcasecmp(sw->str, "i") == 0) caseInsensitive = true;
+				else if(strcasecmp(sw->str, "not") == 0) invert = true;
+				break;
+			}
+			// case Node::Type::Id: {
+			// 	// IdNode *id = (IdNode *)(nod);
+			// 	// if(strcasecmp(id->str, "defined") == 0) 
+			// 	// else if(strcasecmp(id->str, "exist") == 0)
+			// 	break;
+			// }
+			case Node::Type::Parentheses:
+			case Node::Type::Call: {
+				//printf("%s\n", nod->stringify().first);
+				if(elseEncountered) failureRoot = current;
+				else sucessRoot = current;
+				break;
+			}
+			default: break;
+			}
+		}
+	
 		return std::make_pair(_i-i, new IfNode(cmp, sucessRoot, failureRoot, invert, caseInsensitive));
 	}
 
@@ -317,7 +342,7 @@ std::pair<int, Node*> makeNode(std::vector<Token> &tokens, int i, int level) {
 	case Token::Type::Switch: return std::make_pair(1, new SwitchNode((char*)tokens[i].value, tokens[i].additionalData));
 	case Token::Type::Label: return std::make_pair(1, new LabelNode((char*)tokens[i].value, i-1));
 
-	case Token::Type::EnvVar: return std::make_pair(1, new EnvVarNode((char*)tokens[i].value, tokens[i].additionalData));
+	//case Token::Type::EnvVar: return std::make_pair(1, new EnvVarNode((char*)tokens[i].value, tokens[i].additionalData));
 
 	case Token::Type::Id:
 		if(level != 0) { return std::make_pair(1, new IdNode((char*)tokens[i].value)); break; }

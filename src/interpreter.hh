@@ -5,13 +5,10 @@
 
 class Interpreter {
 	Parser parser;
-	InterpreterState state = {
-		.echo = true,
-		.filepos = 0
-	};
+	InterpreterState *state;
 
 public:
-	Interpreter(char *buffer, size_t size);
+	Interpreter(char *buffer, size_t size, InterpreterState *s = nullptr);
 	int interpret();
 
 	std::vector<Node*> &nodes = parser.nodes;
