@@ -1,0 +1,1 @@
+for /L x (0,1,100000) type "build.ninja"

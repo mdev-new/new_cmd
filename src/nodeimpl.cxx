@@ -280,43 +280,43 @@ CompareNode::CompareNode(Node *lhs, Node *rhs, CompareType compareType)
 	this->rhs = rhs;
 
 	switch(compareType) {
-	case CompareType::GTR: {
+	case CompareType::Greater: {
 		this->cmpFunc = [](Node *lhs, Node *rhs, bool caseInsensitive) {
 			return lhs->num > rhs->num;
 		};
 		break;
 	}
-	case CompareType::LSS: {
+	case CompareType::Less: {
 		this->cmpFunc = [](Node *lhs, Node *rhs, bool caseInsensitive) {
 			return lhs->num < rhs->num;
 		};
 		break;
 	}
-	case CompareType::GEQ: {
+	case CompareType::GreaterOrEqual: {
 		this->cmpFunc = [](Node *lhs, Node *rhs, bool caseInsensitive) {
 			return lhs->num >= rhs->num;
 		};
 		break;
 	}
-	case CompareType::LEQ: {
+	case CompareType::LessOrEqual: {
 		this->cmpFunc = [](Node *lhs, Node *rhs, bool caseInsensitive) {
 			return lhs->num <= rhs->num;
 		};
 		break;
 	}
-	case CompareType::EQU: {
+	case CompareType::Equal: {
 		this->cmpFunc = [](Node *lhs, Node *rhs, bool caseInsensitive) {
 			return lhs->num == rhs->num;
 		};
 		break;
 	}
-	case CompareType::NEQ: {
+	case CompareType::NotEqual: {
 		this->cmpFunc = [](Node *lhs, Node *rhs, bool caseInsensitive) {
 			return lhs->num != rhs->num;
 		};
 		break;
 	}
-	case CompareType::STRING: {
+	case CompareType::String: {
 		this->cmpFunc = [](Node *lhs, Node *rhs, bool caseInsensitive) {
 			//printf("%s %s\n", lhs->str, rhs->str);
 			if(caseInsensitive) return strcasecmp(lhs->str, rhs->str) == 0;
@@ -324,13 +324,13 @@ CompareNode::CompareNode(Node *lhs, Node *rhs, CompareType compareType)
 		};
 		break;
 	}
-	case CompareType::EXISTS: {
+	case CompareType::Exists: {
 		this->cmpFunc = [](Node *lhs, Node *rhs, bool caseInsensitive) {
 			return access(lhs->str, F_OK) == 0;
 		};
 		break;
 	}
-	case CompareType::DEFINED: {
+	case CompareType::Defined: {
 		this->cmpFunc = [](Node *lhs, Node *rhs, bool caseInsensitive) {
 			return getenv(lhs->str) != NULL;
 		};
@@ -356,19 +356,19 @@ ForNode::ForNode(ForType type, char id, ParenthesesNode *cond, Node *body, Strin
 	cond(cond)
 {
 	switch(this->forType) {
-	case ForType::FILES: {
+	case ForType::Files: {
 		this->loopCond = [this] { return true; };
 		break;
 	}
-	case ForType::FILESROOTED: {
+	case ForType::FilesRooted: {
 		this->loopCond = [this] { return true; };
 		break;
 	}
-	case ForType::FOLDERS: {
+	case ForType::Folders: {
 		this->loopCond = [this] { return true; };
 		break;
 	}
-	case ForType::NUMBERS: {
+	case ForType::Numbers: {
 		this->loopCond = [this] { return this->range.current <= this->range.end; };
 		this->inc = [this] { this->range.current += this->range.step; };
 		this->setEnv = [this] { char c[2] = {this->id, 0}; setenv(c, itoa_(this->range.current), true); };
@@ -379,15 +379,15 @@ ForNode::ForNode(ForType type, char id, ParenthesesNode *cond, Node *body, Strin
 		this->range.current = this->range.start;
 		break;
 	}
-	case ForType::FILECONTENTS: {
+	case ForType::FileContents: {
 		this->loopCond = [this] { return true; };
 		break;
 	}
-	case ForType::STRINGCONTENTS: {
+	case ForType::StringContents: {
 		this->loopCond = [this] { return true; };
 		break;
 	}
-	case ForType::CMDRESULTS: {
+	case ForType::CmdResults: {
 		this->loopCond = [this] { return true; };
 		break;
 	}

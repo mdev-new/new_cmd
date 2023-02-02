@@ -1,1 +1,3 @@
-fOr /L x (0,1,750000) vEr
+for /L %%x in (1,1,750000) do (
+hello
+)

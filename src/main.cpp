@@ -30,21 +30,21 @@
 #include "interpreter.hh"
 
 template<typename T>
-void print_binary(T number) {
+void print_binary(T number, FILE *out) {
     if (number >> 1) print_binary(number >> 1);
-    putc((number & 1) ? '1' : '0', stdout);
+    putc((number & 1) ? '1' : '0', out);
 }
 
 void prettyPrint(int level, Node *n) {
 	if(n == nullptr) return;
-	printf("[%s]", __FILE__);
-	for(int l = -1; l < 2*level; l++) printf(" ");
+	fprintf(stderr, "[%s]", __FILE__);
+	for(int l = -1; l < 2*level; l++) fprintf(stderr, " ");
 	auto [_1, _2] = n->stringify();
-	printf("%s |%s| ", _1, _2);
+	fprintf(stderr, "%s |%s| ", _1, _2);
 #if 0
-	putc('(', stdout); print_binary<unsigned short>(n->type); printf(") \n");
+	putc('(', stderr); print_binary<unsigned short>(n->type, stderr); fprintf(stderr, ") \n");
 #else
-	printf("\n");
+	fprintf(stderr, "\n");
 #endif
 
 	if(n->type & 1) { // inner
@@ -57,13 +57,13 @@ void prettyPrint(int level, Node *n) {
 		else if((n->type & BARETYPE) == Node::Type::For) {
 			ForNode *fn = n;
 
-			printf("[%s]", __FILE__);
-			for(int l = -1; l < 2*(level+1); l++) printf(" ");
-			printf("%c\n", fn->id);
+			fprintf(stderr, "[%s]", __FILE__);
+			for(int l = -1; l < 2*(level+1); l++) fprintf(stderr, " ");
+			fprintf(stderr, "%c\n", fn->id);
 
-			printf("[%s]", __FILE__);
-			for(int l = -1; l < 2*(level+1); l++) printf(" ");
-			printf("%s\n", magic_enum::enum_name(fn->forType).data());
+			fprintf(stderr, "[%s]", __FILE__);
+			for(int l = -1; l < 2*(level+1); l++) fprintf(stderr, " ");
+			fprintf(stderr, "%s\n", magic_enum::enum_name(fn->forType).data());
 
 			//prettyPrint(level+1, fn->opts);
 			prettyPrint(level+1, fn->cond);
@@ -119,6 +119,7 @@ int main(int argc, char *argv[], char *envp[]) {
 	timersub(&tval_after, &tval_before, &tval_result);
 	fprintf(stderr, "[%s] Parsing took:\t%ld.%06ld\n", __FILE__, (long int)tval_result.tv_sec, (long int)tval_result.tv_usec);
 
+//#define VALGRIND_BUILD
 #ifndef VALGRIND_BUILD
 	for(Node *n : intp.nodes) prettyPrint(0, n);
 #endif

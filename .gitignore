@@ -16,3 +16,5 @@ sdk/dlltool.exe
 *.dll
 *.bin
 cachegrind.*
+*.gch
+*.depends

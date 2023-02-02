@@ -87,6 +87,16 @@ int SortTokens(std::vector<Token> &tokens, int start, int breaktok) {
 				Token::Type::Caret
 			), _) = prefix,
 
+			pattern(Token::Type::Number, anyof(
+				Token::Type::PlusEquals,
+				Token::Type::MinusEquals,
+				Token::Type::TimesEquals,
+				Token::Type::DivideEquals,
+				Token::Type::AndEquals,
+				Token::Type::OrEquals,
+				Token::Type::XorEquals
+			), _) = prefix,
+
 			pattern(anyof(
 				Token::Type::Gtr,
 				Token::Type::Lss,
@@ -98,11 +108,9 @@ int SortTokens(std::vector<Token> &tokens, int start, int breaktok) {
 
 			// todo reduce multiple consecutive slashes
 			// todo move rhs to the front (incase thi happens =xyz0, =0xyz would be easier to parse)
-			pattern(Token::Type::Equals, _, _) = prefix,
-			pattern(Token::Type::Dequal, _, _) = prefix,
+			pattern(anyof(Token::Type::Equals, Token::Type::Dequal), _, _) = prefix,
 
-			pattern(Token::Type::Slash, Token::Type::Id, _) = sw,
-			pattern(Token::Type::Minus, Token::Type::Id, _) = sw,
+			pattern(anyof(Token::Type::Slash, Token::Type::Minus), Token::Type::Id, _) = sw,
 
 			pattern(Token::Type::Colon, Token::Type::Id, _) = label,
 			pattern(_, _, _) = [&] { return; }
@@ -167,7 +175,6 @@ std::pair<int, Node*> makeNode(std::vector<Token> &tokens, int i, int level) {
 		for(; tokens[j].type != Token::Type::RightParen && tokens[j].type != Token::Type::Eof; j+=skip, skip=1) {
 			std::tie(skip, current) = makeNode(tokens, j, 0);
 			if(current == nullptr) continue;
-			//printf("Making node in parens: %s\n", magic_enum::enum_name((Node::Type)nn->type).data());
 			n->children->push_back(current);
 		}
 
@@ -188,80 +195,77 @@ std::pair<int, Node*> makeNode(std::vector<Token> &tokens, int i, int level) {
 	case Token::Type::Lss: {
 		auto [lskip, lhs] = makeNode(tokens, i+1, level+1);
 		auto [rskip, rhs] = makeNode(tokens, i+2, level+1);
-		return std::make_pair(lskip+rskip+1, new CompareNode(lhs, rhs, CompareNode::CompareType::LSS));
+		return std::make_pair(lskip+rskip+1, new CompareNode(lhs, rhs, CompareNode::CompareType::Less));
 	}
 
 	case Token::Type::Leq: {
 		auto [lskip, lhs] = makeNode(tokens, i+1, level+1);
 		auto [rskip, rhs] = makeNode(tokens, i+2, level+1);
-		return std::make_pair(lskip+rskip+1, new CompareNode(lhs, rhs, CompareNode::CompareType::LEQ));
+		return std::make_pair(lskip+rskip+1, new CompareNode(lhs, rhs, CompareNode::CompareType::LessOrEqual));
 	}
 
 	case Token::Type::Gtr: {
 		auto [lskip, lhs] = makeNode(tokens, i+1, level+1);
 		auto [rskip, rhs] = makeNode(tokens, i+2, level+1);
-		return std::make_pair(lskip+rskip+1, new CompareNode(lhs, rhs, CompareNode::CompareType::GTR));
+		return std::make_pair(lskip+rskip+1, new CompareNode(lhs, rhs, CompareNode::CompareType::Greater));
 	}
 
 	case Token::Type::Geq: {
 		auto [lskip, lhs] = makeNode(tokens, i+1, level+1);
 		auto [rskip, rhs] = makeNode(tokens, i+2, level+1);
-		return std::make_pair(lskip+rskip+1, new CompareNode(lhs, rhs, CompareNode::CompareType::GEQ));
+		return std::make_pair(lskip+rskip+1, new CompareNode(lhs, rhs, CompareNode::CompareType::GreaterOrEqual));
 	}
 
 	case Token::Type::Equ: {
 		auto [lskip, lhs] = makeNode(tokens, i+1, level+1);
 		auto [rskip, rhs] = makeNode(tokens, i+2, level+1);
-		return std::make_pair(lskip+rskip+1, new CompareNode(lhs, rhs, CompareNode::CompareType::EQU));
+		return std::make_pair(lskip+rskip+1, new CompareNode(lhs, rhs, CompareNode::CompareType::Equal));
 	}
 
 	case Token::Type::Neq: {
 		auto [lskip, lhs] = makeNode(tokens, i+1, level+1);
 		auto [rskip, rhs] = makeNode(tokens, i+2, level+1);
-		return std::make_pair(lskip+rskip+1, new CompareNode(lhs, rhs, CompareNode::CompareType::NEQ));
+		return std::make_pair(lskip+rskip+1, new CompareNode(lhs, rhs, CompareNode::CompareType::NotEqual));
 	}
 
 	case Token::Type::Dequal: {
 		auto [lskip, lhs] = makeNode(tokens, i+1, level+1);
 		auto [rskip, rhs] = makeNode(tokens, i+2, level+1);
-		return std::make_pair(lskip+rskip+1, new CompareNode(lhs, rhs, CompareNode::CompareType::STRING));
+		return std::make_pair(lskip+rskip+1, new CompareNode(lhs, rhs, CompareNode::CompareType::String));
 	}
 
 	case Token::Type::For: {
-		ForNode::ForType fortyp = ForNode::ForType::FILES;
-		ParenthesesNode *cond;
-		Node *body, *current;
+		ForNode::ForType fortyp = ForNode::ForType::Files;
+		ParenthesesNode *cond = nullptr;
+		Node *body = nullptr, *current;
 		StringNode *options;
-		char id;
-		bool loopSubjectDefined = false;
+		char id = 0;
 
 		int _i = i+1, skip = 1;
 		for(; command_terminators.count(tokens[_i].type) == 0 && _i < tokens.size()-1; _i+=skip, skip = 1) {
-			std::tie(skip, current) = makeNode(tokens, _i, level+1);
-			if(current == nullptr) { 
-				delete current;
-				continue;
-			}
+			std::tie(skip, current) = makeNode(tokens, _i, (cond && id) ? 0 : level+1);
+			if(current == nullptr) continue;
 
 			switch(current->type & BARETYPE) {
 			case Node::Type::Switch: {
 				SwitchNode *sw = (SwitchNode *)(current);
 				switch(sw->str[0] | 0x20) {
 				case 'l': {
-					fortyp = ForNode::ForType::NUMBERS;
+					fortyp = ForNode::ForType::Numbers;
 					break;
 				}
 				case 'f': {
 					break;
 				}
 				case 'd': {
-					fortyp = ForNode::ForType::FOLDERS;
+					fortyp = ForNode::ForType::Folders;
 					break;
 				}
 				case 'r': {
-					fortyp = ForNode::ForType::FILESROOTED;
+					fortyp = ForNode::ForType::FilesRooted;
 					break;
 				}
+				default: break;
 				}
 				break;
 			}
@@ -270,9 +274,8 @@ std::pair<int, Node*> makeNode(std::vector<Token> &tokens, int i, int level) {
 				break;
 			}
 			case Node::Type::Parentheses: {
-				if(!loopSubjectDefined) {
+				if(!cond) {
 					cond = current;
-					loopSubjectDefined = true;
 				}
 				else {
 			case Node::Type::Call:
@@ -288,13 +291,13 @@ std::pair<int, Node*> makeNode(std::vector<Token> &tokens, int i, int level) {
 			}
 		}
 
-		return std::make_pair(_i-i, new ForNode(fortyp, id, cond, body, options));
+		return std::make_pair(_i-i+1, new ForNode(fortyp, id, cond, body, options));
 	}
 
 	case Token::Type::If: {
 		int _i = i+1, skip = 1;
 
-		CompareNode *cmp;
+		CompareNode *cmp = nullptr;
 		Node *sucessRoot = nullptr, *failureRoot = nullptr, *current = nullptr;
 		bool invert = false, caseInsensitive = false;
 		bool elseEncountered = false;
@@ -304,7 +307,7 @@ std::pair<int, Node*> makeNode(std::vector<Token> &tokens, int i, int level) {
 				elseEncountered = true;
 				continue;
 			}
-			std::tie(skip, current) = makeNode(tokens, _i, level+1);
+			std::tie(skip, current) = makeNode(tokens, _i, (!cmp)? level+1 : 0);
 			if(current == nullptr) continue;
 
 			switch(current->type & BARETYPE) {
@@ -324,6 +327,8 @@ std::pair<int, Node*> makeNode(std::vector<Token> &tokens, int i, int level) {
 			// 	// else if(strcasecmp(id->str, "exist") == 0)
 			// 	break;
 			// }
+			case Node::Type::If:
+			case Node::Type::For:
 			case Node::Type::Parentheses:
 			case Node::Type::Call: {
 				//printf("%s\n", nod->stringify().first);
@@ -372,19 +377,30 @@ std::pair<int, Node*> makeNode(std::vector<Token> &tokens, int i, int level) {
 }
 
 Parser::Parser(char *buffer, size_t length)
- : lexer(buffer, length)
+ : lexer(buffer, length),
+ idx(0)
 {
 	this->tokens = lexer.lexBuffer();
 }
+
+// Node* Parser::consume(short tokentype) {
+// 	// tokentype = Token::Type::String | Token::Type::Id;
+// 	// 3 | 4 = 0b111 (7)
+// 	bool isMatch = tokentype & ~tokens[idx].type;
+// 	if(!isMatch && tokentype != tokens[idx].type) return nullptr;
+
+// 	Token tok = tokens[idx];
+// 	idx++;
+// }
 
 void Parser::parse() {
 	int i, skip;
 
 	SortTokens(tokens, 0, 0);
 
-	printf("[%s] === Token printout ===\n", __FILE__);
+	fprintf(stderr, "[%s] === Token printout ===\n", __FILE__);
 	for(int x = 0; x < tokens.size()-1; x++) {
-		printf("[%s] %d\t%s\n", __FILE__, tokens[x].type, magic_enum::enum_name((Token::Type)(tokens[x].type)).data());
+		fprintf(stderr, "[%s] %d\t%s\n", __FILE__, tokens[x].type, magic_enum::enum_name((Token::Type)(tokens[x].type)).data());
 	}
 
 	for(i = 0, skip = 1; i < tokens.size()-1; i+=skip, skip = 1) {

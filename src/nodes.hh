@@ -161,15 +161,15 @@ struct LabelNode final : public IdNode {
 struct CompareNode final : public Node {
 	// kinda redundant
 	enum class CompareType {
-		GTR,
-		GEQ,
-		LSS,
-		LEQ,
-		EQU,
-		NEQ,
-		STRING,
-		DEFINED,
-		EXISTS
+		Greater,
+		GreaterOrEqual,
+		Less,
+		LessOrEqual,
+		Equal,
+		NotEqual,
+		String,
+		Defined,
+		Exists
 	};
 
 	CompareNode(Node *lhs, Node *rhs, CompareType compareType);
@@ -184,13 +184,13 @@ struct CompareNode final : public Node {
 struct ForNode final : public Node {
 	// completely redundantant but whatever
 	enum class ForType {
-		FILES, // for
-		FILESROOTED, // for /r
-		FOLDERS, // for /d
-		NUMBERS, // for /l
-		FILECONTENTS, // for /f (file1 file2)
-		STRINGCONTENTS, // for /f ("string to process")
-		CMDRESULTS // for /f ('command to be ran')
+		Files, // for
+		FilesRooted, // for /r
+		Folders, // for /d
+		Numbers, // for /l
+		FileContents, // for /f (file1 file2)
+		StringContents, // for /f ("string to process")
+		CmdResults // for /f ('command to be ran')
 	} forType;
 
 	ForNode(ForType type, char id, ParenthesesNode *cond, Node *body, StringNode *opts = nullptr);

@@ -62,11 +62,47 @@ Token Lexer::get() {
 		};
 	};
 
+	static auto processDigit = [&] {
+		int num = 0;
+		size_t orig_idx = idx;
+		while(isdigit(buffer[idx]) || isxdigit(buffer[idx])) {
+			if(isxdigit(buffer[idx]))
+				num = num * 10 + (10 + buffer[idx] - (islxdigit(buffer[idx])? 'a' : 'A'));
+			else
+				num = num * 10 + buffer[idx] - '0';
+			idx++;
+		}
+		return (Token){Token::Type::Number, num, 0, orig_idx, idx-orig_idx};
+	};
+
+	static auto processId = [&] {
+		size_t idstart = idx;
+		idx++;
+		while(validIdBody(buffer[idx])) idx++;
+
+		int len = idx - idstart;
+		char *identifier = strndup(buffer+idstart, len);
+
+		_hashtype_ h = _hashfunc_(identifier, true);
+		if(multicharMapping.count(h) > 0) {
+			auto _token = multicharMapping.at(h).first;
+			return (Token){_token, identifier, 0, idstart, len};
+		} else return (Token){Token::Type::Id, identifier, len, idstart, len};
+	};
+
 	Token t = match(buffer[idx], buffer[idx+1], buffer[idx+2]) (
 		pattern('=', '=', _) = [&] { ReturnToken1(Token::Type::Dequal, 2); },
 		pattern('>', '>', _) = [&] { ReturnToken(Token::Type::PipeOutAppend); },
 		pattern('|', '|', _) = [&] { ReturnToken1(Token::Type::LogicalOr, 2); },
 		pattern('&', '&', _) = [&] { ReturnToken1(Token::Type::LogicalAnd, 2); },
+
+		pattern('+', '=', _) = [&] { ReturnToken1(Token::Type::PlusEquals, 2); },
+		pattern('-', '=', _) = [&] { ReturnToken1(Token::Type::MinusEquals, 2); },
+		pattern('*', '=', _) = [&] { ReturnToken1(Token::Type::TimesEquals, 2); },
+		pattern('/', '=', _) = [&] { ReturnToken1(Token::Type::DivideEquals, 2); },
+		pattern('|', '=', _) = [&] { ReturnToken1(Token::Type::OrEquals, 2); },
+		pattern('&', '=', _) = [&] { ReturnToken1(Token::Type::AndEquals, 2); },
+		pattern('^', '=', _) = [&] { ReturnToken1(Token::Type::XorEquals, 2); },
 
 		pattern('(', _, _) = [&] { ReturnToken(Token::Type::LeftParen); },
 		pattern(')', _, _) = [&] { ReturnToken(Token::Type::RightParen); },
@@ -90,39 +126,13 @@ Token Lexer::get() {
 		pattern('\n', _, _) = [&] { ReturnToken(Token::Type::Space); },
 		pattern('\'', _, _) = processQuotes,
 		pattern('"', _, _) = processQuotes,
+		pattern(isdigit(x), _, _) = processDigit,
+		pattern(validIdStart(_), _, _) = processId,
 		pattern(_, _, _) = [&] { return (Token){Token::Type::Inval, 0, 0, 0, 0}; }
 	);
 
 	if(t.type != Token::Type::Inval) {
 		return t;
-	}
-
-	if(isdigit(buffer[idx])) {
-		int num = 0;
-		size_t orig_idx = idx;
-		while(isdigit(buffer[idx]) || isxdigit(buffer[idx])) {
-			if(isxdigit(buffer[idx]))
-				num = num * 10 + (10 + buffer[idx] - (islxdigit(buffer[idx])? 'a' : 'A'));
-			else
-				num = num * 10 + buffer[idx] - '0';
-			idx++;
-		}
-		return (Token){Token::Type::Number, num, 0, orig_idx, idx-orig_idx};
-	}
-
-	if(validIdStart(buffer[idx])) {
-		size_t idstart = idx;
-		idx++;
-		while(validIdBody(buffer[idx])) idx++;
-
-		int len = idx - idstart;
-		char *identifier = strndup(buffer+idstart, len);
-
-		_hashtype_ h = _hashfunc_(identifier, true);
-		if(multicharMapping.count(h) > 0) {
-			auto _token = multicharMapping.at(h).first;
-			return (Token){_token, identifier, 0, idstart, len};
-		} else return (Token){Token::Type::Id, identifier, len, idstart, len};
 	}
 
 	ReturnToken(Token::Type::Inval);

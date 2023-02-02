@@ -55,6 +55,13 @@ struct Token {
 		Leq,
 		Equ,
 		Neq,
+		PlusEquals,
+		MinusEquals,
+		TimesEquals,
+		DivideEquals,
+		OrEquals,
+		AndEquals,
+		XorEquals,
 
 		BuiltIn,
 		For,

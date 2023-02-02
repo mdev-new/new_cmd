@@ -17,6 +17,9 @@ rule link
   command = $cc -o $out $cflags $in
   description = link $out
 
+# build src/extern/patterns/patterns.hpp.gch: cpp src/extern/patterns/patterns.hpp
+# build src/extern/magic_enum/include/magic_enum.hpp.gch: cpp src/extern/patterns/patterns.hpp
+
 build bin/main.o: cpp src/main.cpp
 build bin/lexer.o: cpp src/lexer.cpp
 build bin/parser.o: cpp src/parser.cpp
