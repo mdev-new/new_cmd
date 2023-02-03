@@ -4,7 +4,7 @@
 cflags=-static -pipe -Ofast -flto=auto -fwhole-program -fuse-linker-plugin -fshort-enums -march=native -mtune=native -msse -msse2 -msse4.2 -mavx -mavx2 -mmmx -funsafe-math-optimizations -ftree-vectorize -ffast-math -ftree-slp-vectorize -fassociative-math -fvisibility=hidden -fcompare-debug-second -fno-stack-protector -fno-math-errno -fno-ident -fno-asynchronous-unwind-tables -fno-exceptions -ffunction-sections -fdata-sections -Wl,--gc-sections,--build-id=none -DNDEBUG -g3
 shutup=-w -Wno-error -std=gnu++2b -fpermissive -Wno-narrowing -Wno-unused-result -Wno-format
 
-inc=-Isrc/extern -Isrc/extern/magic_enum/include
+inc=-Iextern -Iextern/magic_enum/include -Iextern/boost/boost -Iextern/simple_match/include
 
 cc = ccache g++
 
