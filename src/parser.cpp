@@ -383,16 +383,6 @@ Parser::Parser(char *buffer, size_t length)
 	this->tokens = lexer.lexBuffer();
 }
 
-// Node* Parser::consume(short tokentype) {
-// 	// tokentype = Token::Type::String | Token::Type::Id;
-// 	// 3 | 4 = 0b111 (7)
-// 	bool isMatch = tokentype & ~tokens[idx].type;
-// 	if(!isMatch && tokentype != tokens[idx].type) return nullptr;
-
-// 	Token tok = tokens[idx];
-// 	idx++;
-// }
-
 void Parser::parse() {
 	int i, skip;
 
