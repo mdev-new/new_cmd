@@ -1,2 +1,0 @@
-no env vars in strings
- - if "%x%=="%y%" => if %x%==%y%

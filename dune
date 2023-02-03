@@ -1,0 +1,7 @@
+(executable
+ (public_name cmdrewrite3)
+ (name main))
+
+(env
+(dev
+  (flags (:standard -warn-error -A))))

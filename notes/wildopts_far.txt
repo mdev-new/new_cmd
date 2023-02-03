@@ -1,2 +1,0 @@
-wild optimization options:
- - PATH caching (cache results of callnode's exe findings 
