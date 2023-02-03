@@ -1,0 +1,6 @@
+[submodule "extern/patterns"]
+	path = extern/patterns
+	url = https://github.com/mpark/patterns
+[submodule "extern/magic_enum"]
+	path = extern/magic_enum
+	url = https://github.com/Neargye/magic_enum
