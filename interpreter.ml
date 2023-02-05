@@ -7,7 +7,7 @@ let stringify = function
 | Parser.String a -> a
 
 let rec interpret = function
-| [] -> print_endline "end"
+| [] -> begin end
 | h :: t -> begin print_endline (stringify (h())); interpret t; end
 
 end
