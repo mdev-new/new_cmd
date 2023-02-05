@@ -110,6 +110,12 @@ module Token = struct
 		"for", For;
 		"do", Do;
 		"in", In;
+		"equ", Equ;
+		"neq", Neq;
+		"gtr", Gtr;
+		"lss", Lss;
+		"leq", Leq;
+		"geq", Geq;
 	]
 
 	let lookupIdent str = try
