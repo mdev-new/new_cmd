@@ -7,7 +7,9 @@
 
 #include "commands.hh"
 
-#include <patterns/patterns.hpp>
+#include <mpark/patterns.hpp>
+#include <regex>
+#include <string>
 
 // todo regex
 
@@ -41,6 +43,30 @@ Lexer::Lexer(uint8_t *buffer, size_t size)
 {
 	for (auto &it : multicharTokens) {
 		multicharMapping.insert(it);
+	}
+}
+
+// LIMITATION: env vars cannot start with numbers
+static std::regex normalExpansion("%[a-zA-Z]([a-zA-Z0-9\[\]].*)%");
+static std::regex delayedExpansion("![a-zA-Z%]([a-zA-Z0-9\[\]].*)!");
+
+//todo nested env vars
+
+Token Lexer::processPossibleEnvVar(size_t idx, int fallbackToken) {
+	std::string s((const char*) &buffer[idx]);
+	std::smatch m;
+	if (std::regex_match (s, m, normalExpansion)) {
+		std::regex_replace(s, normalExpansion, "%%s%", std::regex_constants::format_first_only);
+		return (Token){Token::Type::EnvVar, false, 0, idx, idx+4};
+	} else if(std::regex_match (s, m, delayedExpansion)) {
+		if (std::regex_match (s, m, normalExpansion)) {
+			std::regex_replace(s, normalExpansion, "%%s%", std::regex_constants::format_first_only);
+		}
+		std::regex_replace(s, delayedExpansion, "!%s!", std::regex_constants::format_first_only);
+		return (Token){Token::Type::EnvVar, true, 0, idx, idx+4};
+	} else {
+		this->idx++;
+		return (Token){fallbackToken, 0, 0, idx-1, 1};
 	}
 }
 
@@ -90,10 +116,16 @@ Token Lexer::get() {
 		} else return (Token){Token::Type::Id, identifier, len, idstart, len};
 	};
 
-	IDENTIFIERS(_x, _y);
+	// this is ugly but works (acessing the buffer again)
+	static auto processEnvVarOrMathSym = [&] {
+		return processPossibleEnvVar(idx, buffer[idx] == '!'? Token::Type::Exclamation : Token::Type::Percent);
+	};
+
+	using namespace mpark::patterns;
+//	IDENTIFIERS(_x, _y);
 	Token t = match(buffer[idx], buffer[idx+1], isdigit(buffer[idx]), isalpha(buffer[idx])) (
 		pattern('=', '=', _, _) = [&] { ReturnToken1(Token::Type::Dequal, 2); },
-		pattern('>', '>', _, _) = [&] { ReturnToken(Token::Type::PipeOutAppend); },
+		pattern('>', '>', _, _) = [&] { ReturnToken1(Token::Type::PipeOutAppend, 2); },
 		pattern('|', '|', _, _) = [&] { ReturnToken1(Token::Type::LogicalOr, 2); },
 		pattern('&', '&', _, _) = [&] { ReturnToken1(Token::Type::LogicalAnd, 2); },
 
@@ -104,6 +136,10 @@ Token Lexer::get() {
 		pattern('|', '=', _, _) = [&] { ReturnToken1(Token::Type::OrEquals, 2); },
 		pattern('&', '=', _, _) = [&] { ReturnToken1(Token::Type::AndEquals, 2); },
 		pattern('^', '=', _, _) = [&] { ReturnToken1(Token::Type::XorEquals, 2); },
+
+		pattern('%', '%', _, _) = [&] { idx+=2; return processId(); },
+		pattern('%', _, _, _) = processEnvVarOrMathSym,
+		pattern('!', _, _, _) = processEnvVarOrMathSym,
 
 		pattern('(', _, _, _) = [&] { ReturnToken(Token::Type::LeftParen); },
 		pattern(')', _, _, _) = [&] { ReturnToken(Token::Type::RightParen); },
@@ -119,11 +155,9 @@ Token Lexer::get() {
 		pattern(':', _, _, _) = [&] { ReturnToken(Token::Type::Colon); },
 		pattern(';', _, _, _) = [&] { ReturnToken(Token::Type::Semicolon); },
 		pattern('|', _, _, _) = [&] { ReturnToken(Token::Type::Pipe); },
-		pattern('%', _, _, _) = [&] { ReturnToken(Token::Type::Percent); },
 		pattern('~', _, _, _) = [&] { ReturnToken(Token::Type::Tilde); },
 		pattern('&', _, _, _) = [&] { ReturnToken(Token::Type::And); },
 		pattern('@', _, _, _) = [&] { ReturnToken(Token::Type::At); },
-		pattern('!', _, _, _) = [&] { ReturnToken(Token::Type::Exclamation); },
 		pattern('\n', _, _, _) = [&] { ReturnToken(Token::Type::Space); },
 		pattern('\'', _, _, _) = processQuotes,
 		pattern('"', _, _, _) = processQuotes,

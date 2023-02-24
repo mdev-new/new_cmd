@@ -22,19 +22,19 @@ struct InterpreterState;
 struct Node {
 	enum Type {
 		Parentheses	= NTP(1, 0),
-		BinOp		= NTP(1, 1),
-		Assign		= NTP(1, 2),
+		BinOp			= NTP(1, 1),
+		Assign			= NTP(1, 2),
 		Compare		= NTP(1, 3),
-		If			= NTP(1, 4),
+		If				= NTP(1, 4),
 		For			= NTP(1, 5),
-		Call		= NTP(1, 6),
+		Call			= NTP(1, 6),
 
 		Number		= NTP(0, 0),
-		String		= NTP(0, 1),
-		EnvVar		= NTP(0, 2),
-		Label		= NTP(0, 3),
-		Id			= NTP(0, 4),
-		Switch		= NTP(0, 5),
+		String			= NTP(0, 1),
+		EnvVar			= NTP(0, 2),
+		Label			= NTP(0, 3),
+		Id				= NTP(0, 4),
+		Switch			= NTP(0, 5),
 	};
 
 	uint16_t type; //zzzzzzzzzzyyyyyx // z=custom storage
@@ -67,10 +67,14 @@ struct NumberNode final : public Node {
 	operator int() const override;
 };
 
+struct EnvVarNode;
 struct StringNode : public Node {
-	StringNode(char *s, bool singlequote = false);
+	StringNode(char *s, bool singlequote = false, std::vector<EnvVarNode*> *substitutions = nullptr);
 	bool singlequote = false;
 	stringifyfun;
+
+private:
+	std::vector<EnvVarNode*> *substitutions;
 };
 
 struct IdNode : public StringNode {
@@ -241,6 +245,7 @@ struct InterpreterState {
 struct CallParams {
 	std::vector<Node*>* params;
 	InterpreterState *state;
+	FILE *fpRead, *fpWrite;
 };
 
 using CallPtr = int(*)(CallParams callParams);

@@ -8,6 +8,8 @@
 
 #include "commands.hh"
 
+#include <algorithm>
+
 #define mkstringify(x, z) std::pair<const char *, char *> x::stringify() { return std::make_pair(#x, z); };
 
 // like interpreter, this file HAS to be optimized aswell
@@ -70,14 +72,30 @@ NumberNode::operator int() const {
 
 /* === StringNode === */
 
-StringNode::StringNode(char *s, bool singlequote = false)
+StringNode::StringNode(char *s, bool singlequote = false, std::vector<EnvVarNode*> *substitutions = nullptr)
 	: super(Node::Type::String, 0, 0),
-	singlequote(singlequote)
+	singlequote(singlequote),
+	substitutions(substitutions)
 {
 	this->str = strdup(s);
 }
 
-mkstringify(StringNode, this->str);
+std::pair<const char *, char *> StringNode::stringify() {
+	if(this->substitutions == nullptr || this->substitutions->empty()) {
+		return std::make_pair("StringNode", this->str);
+	} else {
+		int sumLen = 0;
+		std::vector<char*> evaluated;
+		std::for_each(this->substitutions->begin(), this->substitutions->end(), [&](EnvVarNode*& env) {
+			char *str = env->evaluate();
+			sumLen += strlen(str);
+			evaluated.push_back(str);
+		});
+
+		char *buf = calloc(sumLen + 1, sizeof(char));
+		vsprintf(buf, this->str, reinterpret_cast<va_list>(evaluated.data()));
+	}
+};
 
 /* === SwitchNode === */
 // i am aware this is stupid but i'm doing it for the sake of easier parsing
@@ -208,10 +226,19 @@ int CallNode::evaluate(InterpreterState *state) {
 	if(!dontEcho) {
 	}
 
+	// todo redirection
+	FILE *fp_r, *fp_w;
+	//if(redirect) {
+	//	fp = fopen();
+	//} else {
+		fp_r = stdin;
+		fp_w = stdout;
+	//}
+
 	if(multicharMapping.count(this->hash) > 0) {
 		CallPtr funcPtr = multicharMapping.at(this->hash).second;
 		if(funcPtr != nullptr) {
-			return funcPtr((CallParams){this->children, state});
+			return funcPtr((CallParams){this->children, state, fp_r, fp_w});
 		}
 	} else {
 		// todo find the executable
@@ -395,6 +422,12 @@ ForNode::ForNode(ForType type, char id, ParenthesesNode *cond, Node *body, Strin
 }
 
 uint64_t ForNode::evaluate(InterpreterState *state) {
+	if((this->loopBody->type & BARETYPE) == Node::Type::Parentheses) {
+		if(this->loopBody->children->empty()) {
+			return 0;
+		}
+	}
+
 	for(; this->loopCond(); this->inc()) {
 		this->setEnv();
 		this->loopBody->evaluate(state);
@@ -417,7 +450,6 @@ IfNode::IfNode(CompareNode *cond, Node *ifBodyRoot, Node *elseBodyRoot = nullptr
 
 int IfNode::evaluate(InterpreterState *state) {
 	if(this->condition->evaluate(this->caseInsensitive) || this->invert) {
-		//eval(this->sucess, state);
 		this->sucess->evaluate(state);
 	} else {
 		if(this->failure != nullptr) this->failure->evaluate(state);

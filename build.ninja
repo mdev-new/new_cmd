@@ -1,12 +1,16 @@
-#cflags=-Og -ggdb3 -fsanitize=address -static-libgcc -static-libstdc++
+#cflags_debug=-Og -ggdb3 -fsanitize=address -static-libgcc -static-libstdc++
 
 # todo research -fno-plt
-cflags=-static -pipe -Ofast -flto=auto -fwhole-program -fuse-linker-plugin -fshort-enums -march=native -mtune=native -msse -msse2 -msse4.2 -mavx -mavx2 -mmmx -funsafe-math-optimizations -ftree-vectorize -ffast-math -ftree-slp-vectorize -fassociative-math -fvisibility=hidden -fcompare-debug-second -fno-stack-protector -fno-math-errno -fno-ident -fno-asynchronous-unwind-tables -fno-exceptions -ffunction-sections -fdata-sections -Wl,--gc-sections,--build-id=none -DNDEBUG -g3
+cflags_release=-static -pipe -Ofast -s -flto=8 -fwhole-program -fuse-linker-plugin -fshort-enums -march=native -mtune=native -msse -msse2 -msse4.2 -mavx -mavx2 -mmmx -funsafe-math-optimizations -ftree-vectorize -ffast-math -ftree-slp-vectorize -fassociative-math -fvisibility=hidden -fcompare-debug-second -fno-stack-protector -fno-math-errno -fno-ident -fno-asynchronous-unwind-tables -fno-exceptions -ffunction-sections -fdata-sections -Wl,--gc-sections,--build-id=none -DNDEBUG
+
+cflags_rel_debinfo=-static -pipe -Ofast -flto=8 -fwhole-program -fuse-linker-plugin -fshort-enums -march=native -mtune=native -msse -msse2 -msse4.2 -mavx -mavx2 -mmmx -funsafe-math-optimizations -ftree-vectorize -ffast-math -ftree-slp-vectorize -fassociative-math -fvisibility=hidden -fcompare-debug-second -fno-stack-protector -fno-math-errno -fno-ident -fno-asynchronous-unwind-tables -fno-exceptions -ffunction-sections -fdata-sections -Wl,--gc-sections,--build-id=none -g3
+
+cflags=$cflags_rel_debinfo
+
 shutup=-w -Wno-error -std=gnu++2b -fpermissive -Wno-narrowing -Wno-unused-result -Wno-format
+inc=-I. -Iextern -Iextern/magic_enum/include -Iextern/patterns/include
 
-inc=-Iextern -Iextern/magic_enum/include -Iextern/boost/boost -Iextern/simple_match/include
-
-cc = ccache g++
+cc = g++
 
 rule cpp
   command = $cc -MD -MF $out.depends $cflags $shutup $inc -o $out -c $in

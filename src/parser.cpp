@@ -16,7 +16,7 @@
 
 #include <utility>
 
-#include <patterns/patterns.hpp>
+#include <mpark/patterns.hpp>
 #include <magic_enum.hpp>
 
 #define TCAST(type, val) ((type)val)
@@ -61,6 +61,7 @@ int SortTokens(std::vector<Token> &tokens, int start, int breaktok) {
 		tokens[i+1] = (Token){Token::Type::Label, tokens[i+1].value, pref};
 	};
 
+	using namespace mpark::patterns;
 	for(; breaktok? (tokens[i].type != breaktok && i < tokens.size()-1) : (i < tokens.size()-1); i+=skip, skip=1) {
 		match(tokens[i].type, tokens[i+1].type, tokens[i+2].type) (
 			pattern(Token::Type::LeftParen, _, _) = parens,
@@ -343,11 +344,14 @@ std::pair<int, Node*> makeNode(std::vector<Token> &tokens, int i, int level) {
 		return std::make_pair(_i-i, new IfNode(cmp, sucessRoot, failureRoot, invert, caseInsensitive));
 	}
 
-	case Token::Type::String: return std::make_pair(1, new StringNode((char*)tokens[i].value));
+	case Token::Type::String: {
+		return std::make_pair(1, new StringNode((char*)tokens[i].value));
+	}
 	case Token::Type::Switch: return std::make_pair(1, new SwitchNode((char*)tokens[i].value, tokens[i].additionalData));
 	case Token::Type::Label: return std::make_pair(1, new LabelNode((char*)tokens[i].value, i-1));
 
-	//case Token::Type::EnvVar: return std::make_pair(1, new EnvVarNode((char*)tokens[i].value, tokens[i].additionalData));
+	case Token::Type::EnvVar:
+		return std::make_pair(1, new EnvVarNode((char*)tokens[i].value, tokens[i].additionalData));
 
 	case Token::Type::Id:
 		if(level != 0) { return std::make_pair(1, new IdNode((char*)tokens[i].value)); break; }
@@ -358,6 +362,7 @@ std::pair<int, Node*> makeNode(std::vector<Token> &tokens, int i, int level) {
 		std::vector<Node *> args;
 
 		bool isCall = strcasecmp(tokens[i].value, "call") == 0 || strcasecmp(tokens[i].value, "start") == 0; // lets avoid headaches caused by reparsing that line later on :)
+		bool isRem = strcasecmp(tokens[i].value, "rem") == 0;
 
 		for(; command_terminators.count(tokens[_i].type) == 0 && _i < tokens.size(); _i+=skip, skip = 1) {
 			auto [skp, nod] = makeNode(tokens, _i, isCall? 0 : 1);
@@ -368,8 +373,12 @@ std::pair<int, Node*> makeNode(std::vector<Token> &tokens, int i, int level) {
 			else delete nod;
 		}
 
-		if(tokens.size() >= i-1) return std::make_pair(_i-i, (Node*)new CallNode((char*)tokens[i].value, args, tokens[i-1].type == Token::Type::At));
-		else return std::make_pair(_i-i, (Node*)new CallNode((char*)tokens[i].value, args));
+		if(!isRem) {
+			if(tokens.size() >= i-1) return std::make_pair(_i-i, (Node*)new CallNode((char*)tokens[i].value, args, tokens[i-1].type == Token::Type::At));
+			else return std::make_pair(_i-i, (Node*)new CallNode((char*)tokens[i].value, args));
+		} else {
+			return std::make_pair(_i-i, nullptr);
+		}
 	}
 
 	default: return std::make_pair(1, nullptr);
@@ -393,10 +402,9 @@ void Parser::parse() {
 		fprintf(stderr, "[%s] %d\t%s\n", __FILE__, tokens[x].type, magic_enum::enum_name((Token::Type)(tokens[x].type)).data());
 	}
 
+	Node *current;
 	for(i = 0, skip = 1; i < tokens.size()-1; i+=skip, skip = 1) {
-		auto [_skip, _node] = makeNode(tokens, i, 0);
-		if(_node == nullptr) continue;
-		this->nodes.push_back(_node);
-		skip = _skip;
+		std::tie(skip, current) = makeNode(tokens, i, 0);
+		if(current != nullptr) this->nodes.push_back(current);
 	}
 }

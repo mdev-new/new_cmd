@@ -4,10 +4,22 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <conio.h>
+#include <direct.h>
 
-void setenv(char *name, char *value, bool overwrite);
-void unsetenv(char *name);
-char *realpath(char *rel, char *abs);
+#define acess(x, y) _acess(x, y)
+#define setenv(name, value, overwrite) SetEnvironmentVariable(name, value)
+#define unsetenv(name) SetEnvironmentVariable(name, NULL)
+#define realpath(abs, rel) _fullpath(abs, rel, PATH_MAX)
+
+#define timersub(a, b, result)                                               \
+  do {                                                                        \
+    (result)->tv_sec = (a)->tv_sec - (b)->tv_sec;                             \
+    (result)->tv_usec = (a)->tv_usec - (b)->tv_usec;                          \
+    if ((result)->tv_usec < 0) {                                              \
+      --(result)->tv_sec;                                                     \
+      (result)->tv_usec += 1000000;                                           \
+    }                                                                         \
+  } while (0)
 
 #else
 #include <stdio.h>

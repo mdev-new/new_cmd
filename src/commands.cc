@@ -203,8 +203,7 @@ IFUN(doType) {
 			char *buf = malloc((sz+1)*sizeof(char));
 			fread(buf, sz, 1, f);
 			buf[sz] = 0;
-			write(1, buf, sz);
-			write(1, "\n", 1);
+			fwrite(buf, 1, sz, callParams.fpWrite);
 
 			free(buf);
 			fclose(f);
@@ -275,7 +274,7 @@ IFUN(doHelp) {
 	"If you installed this, you already know how to use cmd.exe and you are only going after speed.\n"
 	"So I am not going to waste time by writing documentation. Have a nice day!\n";
 
-	write(1, str, strlen(str));
+	fwrite(str, 1, strlen(str), callParams.fpWrite);
 	return 0;
 }
 

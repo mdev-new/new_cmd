@@ -122,8 +122,8 @@ INT HookDll(HANDLE hProcess, LPVOID dllcode, LPARAM lParam) {
 }
 
 IFUN(doInject) {
-	Node *param0 = callParams.params[0];
-	if(param0->type != MKNTYP(NODE_LEAF, LNODE_STRING)) return -1;
+	Node *param0 = (*callParams.params)[0];
+	if(param0->type != Node::Type::String) return -1;
 
 	char *dllname = TCAST(StringNode*, param0)->str;
 	HANDLE hProc = OpenProcess(PROCESS_ALL_ACCESS, FALSE, GetCurrentProcessId());

@@ -63,6 +63,8 @@ struct Token {
 		AndEquals,
 		XorEquals,
 
+		EnvVar,
+
 		BuiltIn,
 		For,
 		Do,
@@ -90,12 +92,14 @@ public:
 	std::vector<Token> lexBuffer();
 
 private:
+	Token processPossibleEnvVar(decltype(idx) idx, int fallback);
+
 	bool eof() { return length == 0 || idx >= length || buffer[idx] == 0; }
-	bool isdigit(char c) { return '0' <= c && c <= '9'; }
-	bool isalpha(char c) { return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'); }
-	bool validIdStart(char c) { return (isalpha(c) || c == '_'); }
-	bool validIdBody(char c) { return validIdStart(c) || isdigit(c); }
-	bool islxdigit(char c) { return c >= 'a' && c <= 'f'; }
-	bool isuxdigit(char c) { return c >= 'A' && c <= 'F'; }
-	bool isxdigit(char c) { return islxdigit(c) || isuxdigit(c); }
+	const bool isdigit(char c) const { return '0' <= c && c <= '9'; }
+	const bool isalpha(char c) const { return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'); }
+	const bool validIdStart(char c) const { return (isalpha(c) || c == '_'); }
+	const bool validIdBody(char c) const { return validIdStart(c) || isdigit(c); }
+	const bool islxdigit(char c) const { return c >= 'a' && c <= 'f'; }
+	const bool isuxdigit(char c) const { return c >= 'A' && c <= 'F'; }
+	const bool isxdigit(char c) const { return islxdigit(c) || isuxdigit(c); }
 };
