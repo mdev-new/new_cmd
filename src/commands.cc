@@ -311,9 +311,9 @@ IFUN(doPath) {
 	return 0;
 }
 
-#ifdef _WIN64
+//#ifdef _WIN64
 extern IFUN(doInject);
-#endif
+//#endif
 
 std::unordered_map<_hashtype_, std::pair<decltype(Token::type), CallPtr>, Hasher> multicharMapping = {
 	fe("call", Token::Type::BuiltIn, doCall)
@@ -362,9 +362,9 @@ std::unordered_map<_hashtype_, std::pair<decltype(Token::type), CallPtr>, Hasher
 	fe("exit", Token::Type::BuiltIn, doExit)
 	fe("break", Token::Type::BuiltIn, doBreak)
 
-#ifdef _WIN64 // currently only Windows x64 supported, sorry
+//#ifdef _WIN64 // currently only Windows x64 supported, sorry
 	fe("extend", Token::Type::BuiltIn, doInject)
-#endif
+//#endif
 };
 
 void RegisterCommand(char *cmd, CallPtr func) {

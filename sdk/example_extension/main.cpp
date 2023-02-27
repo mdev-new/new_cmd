@@ -1,18 +1,18 @@
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <assert.h>
+
 #include "cmd_sdk.hh"
 
-RegisterCmdPtr registerCommand = nullptr;
+DllMainData *dllData = nullptr;
 
-DWORD WINAPI ThreadProc(LPVOID lpParam) {
+[[noreturn]] void threadProc() {
 
 	// run background job (input polling, etc)
 	while(1) {
-		Sleep(1000);
+		dllData.Sleep(1000);
 	}
-
-	// unreachable code
-	return 0;
 }
 
 long counter = 0;
@@ -20,14 +20,9 @@ IFUN(testCommand) {
 	return ++counter;
 }
 
-int APIENTRY DllMain(HINSTANCE hInst, DWORD dwReason, LPVOID lpReserved) {
-	if (dwReason == DLL_PROCESS_ATTACH) {
+ExtEntryFunc {
+	dllData = data;
+	dllData.registerCommand("test", testCommand);
 
-		registerCommand = lpReserved;
-		registerCommand("test", testCommand);
-
-		CreateThread(NULL,0,(LPTHREAD_START_ROUTINE)ThreadProc,NULL,0,NULL);
-
-	}
-	return TRUE;
+	dllData.createThread(ThreadProc);
 }

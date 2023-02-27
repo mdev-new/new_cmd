@@ -1,11 +1,20 @@
-#ifdef _WIN64
 #include "shared.hh"
 #include "nodes.hh"
 #include "commands.hh"
-#include "win.hh"
+
+#if defined(_WIN32)
+  #include "win.hh"
+#elif defined(__APPLE__)
+# error extension api NOT IMPLEMENTED
+#elif defined(__linux__)
+  #include <dlfcn.h>
+  #include <sys/mman.h>
+#endif
 
 // todo expose node types
+#include "nodes.hh"
 #include "parser.hpp"
+#include "extension_api.hh"
 #include "dllheader.hh"
 
 #include "extern/lz77.hh"
@@ -16,152 +25,77 @@
 #include <cstdlib>
 #include <cstdio>
 
-typedef unsigned __int64 QWORD;
-
-enum {
-  ERROR_NOT_CMDEXE = -2,
-  ERROR_CANNOT_GET_PARENT_PROC = -3,
-  ERROR_FILE_DOESNT_EXIST_OR_INVALID_ARGS = -4,
-  ERROR_CANNOT_OPEN_FILE = -5,
-  ERROR_EMPTY_FILE = -6,
-  ERROR_CANNOT_READ_FILE = -7,
-  ERROR_CANNOT_ALLOCATE = -8,
-  ERROR_CANNOT_FREE = -9,
-  ERROR_CANNOT_DECOMPRESS = -10,
-  ERROR_CANNOT_HOOK = -11,
-  ERROR_CANNOT_WRITE_PROCESS_MEM = -12,
-  ERROR_CANNOT_VIRTUAL_ALLOC = -13,
-  ERROR_CANNOT_VIRTUAL_FREE = -14,
-  ERROR_CANNOT_OPEN_PROCESS = -15,
-  ERROR_CANNOT_OPEN_HEAP = -15,
-  ERROR_CANNOT_GET_PARENT_PROC_PATH = -16,
-  ERROR_INVALID_FILE = -17
-};
-
-typedef struct {
-    PBYTE imageBase;
-    HMODULE(WINAPI* loadLibraryA)(PCSTR);
-    FARPROC(WINAPI* getProcAddress)(HMODULE, PCSTR);
-    VOID(WINAPI* rtlZeroMemory)(PVOID, SIZE_T);
-    LPARAM reservedParam;
-} LoaderData;
-
-using EntryPointPtr = DWORD(__stdcall*)(HMODULE, DWORD, LPVOID);
-
-// not even gonna attempt to error check that
-QWORD WINAPI loadLibrary(LoaderData* loaderData) {
-    PIMAGE_NT_HEADERS ntHeaders = (PIMAGE_NT_HEADERS)(loaderData->imageBase + ((PIMAGE_DOS_HEADER)loaderData->imageBase)->e_lfanew);
-    PIMAGE_BASE_RELOCATION relocation = (PIMAGE_BASE_RELOCATION)(loaderData->imageBase + ntHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC].VirtualAddress);
-    QWORD delta = (QWORD)(loaderData->imageBase - ntHeaders->OptionalHeader.ImageBase);
-    while (relocation->VirtualAddress) {
-        PWORD relocationInfo = (PWORD)(relocation + 1);
-        for (int i = 0, count = (relocation->SizeOfBlock - sizeof(IMAGE_BASE_RELOCATION)) / sizeof(WORD); i < count; i++)
-            if (relocationInfo[i] >> 12 == IMAGE_REL_BASED_HIGHLOW)
-                *(QWORD *)(loaderData->imageBase + (relocation->VirtualAddress + (relocationInfo[i] & 0xFFF))) += delta;
-
-        relocation = (PIMAGE_BASE_RELOCATION)((LPBYTE)relocation + relocation->SizeOfBlock);
-    }
-
-    PIMAGE_IMPORT_DESCRIPTOR importDirectory = (PIMAGE_IMPORT_DESCRIPTOR)(loaderData->imageBase + ntHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress);
-
-    while (importDirectory->Characteristics) {
-        PIMAGE_THUNK_DATA originalFirstThunk = (PIMAGE_THUNK_DATA)(loaderData->imageBase + importDirectory->OriginalFirstThunk);
-        PIMAGE_THUNK_DATA firstThunk = (PIMAGE_THUNK_DATA)(loaderData->imageBase + importDirectory->FirstThunk);
-
-        HMODULE module = LoadLibraryA((LPCSTR)loaderData->imageBase + importDirectory->Name);
-
-        if (!module)
-            return FALSE;
-
-        while (originalFirstThunk->u1.AddressOfData) {
-            QWORD Function = (QWORD)GetProcAddress(module, originalFirstThunk->u1.Ordinal & IMAGE_ORDINAL_FLAG ? (LPCSTR)(originalFirstThunk->u1.Ordinal & 0xFFFF) : ((PIMAGE_IMPORT_BY_NAME)((LPBYTE)loaderData->imageBase + originalFirstThunk->u1.AddressOfData))->Name);
-
-            if (!Function)
-                return FALSE;
-
-            firstThunk->u1.Function = Function;
-            originalFirstThunk++;
-            firstThunk++;
-        }
-        importDirectory++;
-    }
-
-    if (ntHeaders->OptionalHeader.AddressOfEntryPoint) {
-      EntryPointPtr epnt = (EntryPointPtr)(loaderData->imageBase + ntHeaders->OptionalHeader.AddressOfEntryPoint);
-      QWORD result = epnt((HMODULE)loaderData->imageBase, DLL_PROCESS_ATTACH, loaderData->reservedParam);
-
-      //loaderData->rtlZeroMemory(loaderData->imageBase + ntHeaders->OptionalHeader.AddressOfEntryPoint, 32);
-      loaderData->rtlZeroMemory(loaderData->imageBase, ntHeaders->OptionalHeader.SizeOfHeaders);
-      return result;
-    }
-    return TRUE;
+void *getProcAddress(char *mod, char *fn) {
+  // todo cache results
+#if   defined(_WIN32)
+  return GetProcAddress(GetModuleHandleA(mod), fn);
+#elif defined(__APPLE__)
+# error __PRETTY_FUNCTION__ NOT IMPLEMENTED
+#elif defined(__linux__)
+  return dlsym(dlopen(mod, RTLD_NOW | RTLD_GLOBAL), fn);
+#endif
 }
 
-// todo error checking?
-INT HookDll(HANDLE hProcess, LPVOID dllcode, LPARAM lParam) {
-  PIMAGE_NT_HEADERS ntHeaders = (PIMAGE_NT_HEADERS)(dllcode + ((PIMAGE_DOS_HEADER)dllcode)->e_lfanew);
-  PBYTE executableImage = VirtualAlloc(NULL, ntHeaders->OptionalHeader.SizeOfImage, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-  if(executableImage == NULL) return ERROR_CANNOT_VIRTUAL_ALLOC;
+void hookDll(void *buf, size_t size, DllEntry entry) {
 
-  memcpy(executableImage, dllcode, ntHeaders->OptionalHeader.SizeOfHeaders);
+#ifdef __linux__
+  mprotect(buf, size, PROT_READ | PROT_WRITE | PROT_EXEC);
+#elif defined(_WIN32)
+  VirtualProtect(buf, size, PAGE_EXECUTE_READWRITE, nullptr);
+#endif
 
-  PIMAGE_SECTION_HEADER sectionHeaders = (PIMAGE_SECTION_HEADER)(ntHeaders + 1);
-  for (int i = 0; i < ntHeaders->FileHeader.NumberOfSections; i++)
-    memcpy(executableImage + sectionHeaders[i].VirtualAddress, dllcode + sectionHeaders[i].PointerToRawData, sectionHeaders[i].SizeOfRawData);
-
-  LoaderData loaderParams = {
-    .imageBase = executableImage,
-    .loadLibraryA = GetProcAddress(GetModuleHandle("kernel32.dll"), "LoadLibraryA"),
-    .getProcAddress = GetProcAddress(GetModuleHandle("kernel32.dll"), "GetProcAddress"),
-    .rtlZeroMemory = (VOID(NTAPI*)(PVOID, SIZE_T))GetProcAddress(GetModuleHandle("ntdll.dll"), "RtlZeroMemory"),
-    .reservedParam = lParam
+  DllMainData d = {
+    .registerCommand = RegisterCommand,
+    .getProcAddr = getProcAddress
   };
 
-  loadLibrary(&loaderParams);
-  return 0;
+  entry(&d);
+
 }
 
 IFUN(doInject) {
-	Node *param0 = (*callParams.params)[0];
+	StringNode *param0 = (*callParams.params)[0];
 	if(param0->type != Node::Type::String) return -1;
 
-	char *dllname = TCAST(StringNode*, param0)->str;
-	HANDLE hProc = OpenProcess(PROCESS_ALL_ACCESS, FALSE, GetCurrentProcessId());
+	char *dllname = param0->stringify().second;
+    char *buffer = nullptr;
 
 	FILE *fp = fopen(dllname, "rb");
 	fseek(fp, 0, SEEK_END);
 	size_t size = ftell(fp);
 	rewind(fp);
 
-	char *buffer = malloc(size);
+	buffer = malloc(size);
 	fread(buffer, size, 1, fp);
 
 	Header *header = (Header *)buffer;
-	if(header->magic != MAGIC) return -1; // TODO
+	if(header->magic != MAGIC) return -1;
 
-	switch(header->compression & 0b1111) {
-	case UNCOMPRESSED: HookDll(hProc, buffer+header->sizeOfSelf, (LONG_PTR)RegisterCommand); break;
+	//printf("%llx\n", header->entryOffset);
+	//exit(-1);
+
+	switch(header->compressionFlags & 0b1111) {
+	case UNCOMPRESSED: hookDll(buffer+header->sizeOfSelf, header->uncompressed_size, (DllEntry)buffer+header->sizeOfSelf+header->entryOffset); break;
 	case ALGO_LZ77: {
-		char *decompBuffer = malloc(header->uncompressed_file_size);
+		char *decompBuffer = malloc(header->uncompressed_size);
 		// todo error check
 
-		int decomp = lz77_decompress(buffer+header->sizeOfSelf, size-header->sizeOfSelf, decompBuffer, header->uncompressed_file_size+1, header->compression >> 27);
+		int decomp = lz77_decompress(buffer+header->sizeOfSelf, size-header->sizeOfSelf, decompBuffer, header->uncompressed_size+1, header->compressionFlags >> 27);
 		// todo error check
-		HookDll(hProc, decompBuffer, (LONG_PTR)RegisterCommand); 
-		free(decompBuffer);
+		hookDll(decompBuffer, header->uncompressed_size, (DllEntry)decompBuffer+header->entryOffset);
+		//free(decompBuffer);
 		break;
 	} break;
 	case ALGO_DEFLATE: {
-		char *decompBuffer = malloc(header->uncompressed_file_size);
+		char *decompBuffer = malloc(header->uncompressed_size);
 		// todo error check
 
-		int decomp = sinfl_decompress(decompBuffer, header->uncompressed_file_size+1, buffer+header->sizeOfSelf, size-header->sizeOfSelf);
+		int decomp = sinfl_decompress(decompBuffer, header->uncompressed_size+1, buffer+header->sizeOfSelf, size-header->sizeOfSelf);
 		// todo error check
 
 		// todo error check
-		HookDll(hProc, decompBuffer, (LONG_PTR)RegisterCommand);
-    printf("extension sucessful!\n");
-		free(decompBuffer);
+		hookDll(decompBuffer, header->uncompressed_size, (DllEntry)decompBuffer+header->entryOffset);
+		//free(decompBuffer);
 		break;
 	} break;
 	default: break;
@@ -171,5 +105,3 @@ IFUN(doInject) {
 	return 0;
 
 }
-
-#endif

@@ -93,7 +93,7 @@ std::pair<const char *, char *> StringNode::stringify() {
 		});
 
 		char *buf = calloc(sumLen + 1, sizeof(char));
-		vsprintf(buf, this->str, reinterpret_cast<va_list>(evaluated.data()));
+		//vsprintf(buf, this->str, reinterpret_cast<va_list>(evaluated.data()));
 	}
 };
 

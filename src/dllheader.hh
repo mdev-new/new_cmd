@@ -11,8 +11,9 @@ typedef struct {
 	short magic;
 	char sizeOfSelf;
 	char headerVersion;
-	int compression;
-	long uncompressed_file_size;
+	int compressionFlags;
+	long uncompressed_size;
+	size_t entryOffset;
 } __attribute__((__packed__)) Header;
 
 #define MAGIC 'Mk' // in file its in reverse order

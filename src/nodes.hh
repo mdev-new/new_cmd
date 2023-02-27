@@ -18,18 +18,37 @@
 
 #define NTP(x, y) (x | (y << 1))
 
-struct InterpreterState;
+struct InterpreterState {
+	bool echo;
+	int filepos;
+
+	std::unordered_map<uint32_t, int> labels;
+	std::stack<char*> directoryStack;
+	std::stack<std::unordered_map<char *, char *>> localEnvironments; //todo every call level recieves fresh one, so that means a stack of stacks?
+	char *buffer;
+	size_t bufferSize;
+};
+
+struct Node;
+struct CallParams {
+	std::vector<Node*>* params;
+	InterpreterState *state;
+	FILE *fpRead, *fpWrite;
+};
+
+using CallPtr = int(*)(CallParams callParams);
+
 struct Node {
 	enum Type {
-		Parentheses	= NTP(1, 0),
+		Parentheses		= NTP(1, 0),
 		BinOp			= NTP(1, 1),
 		Assign			= NTP(1, 2),
-		Compare		= NTP(1, 3),
+		Compare			= NTP(1, 3),
 		If				= NTP(1, 4),
-		For			= NTP(1, 5),
+		For				= NTP(1, 5),
 		Call			= NTP(1, 6),
 
-		Number		= NTP(0, 0),
+		Number			= NTP(0, 0),
 		String			= NTP(0, 1),
 		EnvVar			= NTP(0, 2),
 		Label			= NTP(0, 3),
@@ -230,23 +249,3 @@ struct IfNode final : public Node {
 	Node *sucess, *failure;
 	bool invert, caseInsensitive;
 };
-
-struct InterpreterState {
-	bool echo;
-	int filepos;
-
-	std::unordered_map<uint32_t, int> labels;
-	std::stack<char*> directoryStack;
-	std::stack<std::unordered_map<char *, char *>> localEnvironments; //todo every call level recieves fresh one, so that means a stack of stacks?
-	char *buffer;
-	size_t bufferSize;
-};
-
-struct CallParams {
-	std::vector<Node*>* params;
-	InterpreterState *state;
-	FILE *fpRead, *fpWrite;
-};
-
-using CallPtr = int(*)(CallParams callParams);
-using RegisterCmdPtr = void(*)(char *cmd, CallPtr fn);
