@@ -1,13 +1,10 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdint.h>
+#include "standard.h"
 
 typedef int (*CompressFun)(uint8_t *input, uint8_t *output, uint32_t input_length);
 
-#include "../utility.h"
+#include "utilities/file_utils.h"
 
-#include "../dllheader.hh"
+#include "extension_api/dllheader.hh"
 
 // range 2-8 inclusive
 #define LZ77_MATCH_LENGTH_BITS 8

@@ -2,9 +2,8 @@
 #include <vector>
 #include <cstdint>
 #include <variant>
-#include "lexer.hpp"
-#include "nodes.hh"
-#include "shared.hh"
+#include "interpreter/lexer/lexer.hpp"
+#include "interpreter/nodes.hh"
 
 class Parser {
 	Lexer lexer;

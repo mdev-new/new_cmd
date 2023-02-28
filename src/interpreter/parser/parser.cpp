@@ -4,15 +4,14 @@
 /// parse commands & their params
 
 #include "parser.hpp"
-#include "lexer.hpp"
+#include "interpreter/lexer/lexer.hpp"
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
 #include <algorithm>
 #include <unordered_set>
 #include <cstring>
-#include "shared.hh"
-#include "nodes.hh"
+#include "interpreter/nodes.hh"
 
 #include <utility>
 

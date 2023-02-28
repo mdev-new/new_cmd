@@ -6,9 +6,11 @@
 #	define stdcall __stdcall
 #endif
 
-using RegisterCmdPtr = void(*)(char *cmd, CallPtr fn);
+#include "interpreter/nodes.hh"
+
+using RegisterCmdPtr = void(*)(char *cmd, void * fn);
 using SetEnvVarPtr = bool(*)(char *name, char *value);
-using SleepPtr = void(*);
+using SleepPtr = void(*)(int len);
 using CreateThreadPtr = bool(*)(void *threadStart);
 
 struct DllMainData {
@@ -20,4 +22,4 @@ struct DllMainData {
 };
 
 using DllEntry = void(stdcall*)(DllMainData *data);
-#define ExtEntryFunc void stdcall DllEntry(DllMainData *data)
+#define ExtEntryPoint extern "C" int DllEntryPoint(DllMainData *data)

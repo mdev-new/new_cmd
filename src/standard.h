@@ -11,7 +11,7 @@
 #define unsetenv(name) SetEnvironmentVariable(name, NULL)
 #define realpath(abs, rel) _fullpath(abs, rel, PATH_MAX)
 
-#define timersub(a, b, result)                                               \
+#define timersub(a, b, result)                                                \
   do {                                                                        \
     (result)->tv_sec = (a)->tv_sec - (b)->tv_sec;                             \
     (result)->tv_usec = (a)->tv_usec - (b)->tv_usec;                          \
@@ -22,11 +22,16 @@
   } while (0)
 
 #else
+
+#define Sleep(t) usleep(t * 1000)
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <strings.h>
 #include <string.h>
 #include <limits.h>
+#include <stdint.h>
+#include <alloca.h>
 
 #endif

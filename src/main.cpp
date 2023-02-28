@@ -26,8 +26,8 @@
 
 #include <magic_enum.hpp>
 
-#include "win.hh"
-#include "interpreter.hh"
+#include "standard.h"
+#include "interpreter/interpreter.hh"
 
 template<typename T>
 void print_binary(T number, FILE *out) {
@@ -41,6 +41,7 @@ void prettyPrint(int level, Node *n) {
 	for(int l = -1; l < 2*level; l++) fprintf(stderr, " ");
 	auto [_1, _2] = n->stringify();
 	fprintf(stderr, "%s |%s| ", _1, _2);
+
 #if 0
 	putc('(', stderr); print_binary<unsigned short>(n->type, stderr); fprintf(stderr, ") \n");
 #else

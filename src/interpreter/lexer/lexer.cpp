@@ -1,11 +1,10 @@
 #include "lexer.hpp"
-#include "shared.hh"
 #include <cstdlib>
 #include <cstdio>
 #include <unordered_map>
 #include <utility>
 
-#include "commands.hh"
+#include "interpreter/commands.hh"
 
 #include <mpark/patterns.hpp>
 #include <regex>

@@ -1,7 +1,6 @@
 #pragma once
 #include "nodes.hh"
-#include "shared.hh"
-#include "parser.hpp"
+#include "parser/parser.hpp"
 
 class Interpreter {
 	Parser parser;

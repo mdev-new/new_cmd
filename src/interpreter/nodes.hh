@@ -16,6 +16,12 @@
 #define stringifyfun std::pair<const char *, char *> stringify() override
 #define IFUN(name) int name(CallParams callParams)
 
+#define TCAST(type, val) ((type)val)
+#define WITHCHILDREN (1 << 15)
+#define WITHCHILDREN_(N) (N & (1 << 15))
+#define BARETYPE 0xF
+#define BARETYPE_(N) (N & 0xF)
+
 #define NTP(x, y) (x | (y << 1))
 
 struct InterpreterState {

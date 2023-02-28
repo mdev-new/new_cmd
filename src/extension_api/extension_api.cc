@@ -1,21 +1,19 @@
-#include "shared.hh"
-#include "nodes.hh"
-#include "commands.hh"
+#include "interpreter/commands.hh"
 
 #if defined(_WIN32)
-  #include "win.hh"
+  #include "standard.hh"
 #elif defined(__APPLE__)
 # error extension api NOT IMPLEMENTED
 #elif defined(__linux__)
+	#include "standard.h"
   #include <dlfcn.h>
   #include <sys/mman.h>
 #endif
 
 // todo expose node types
-#include "nodes.hh"
-#include "parser.hpp"
-#include "extension_api.hh"
+#include "interpreter/nodes.hh"
 #include "dllheader.hh"
+#include "extension_api.hh"
 
 #include "extern/lz77.hh"
 
@@ -46,6 +44,7 @@ void hookDll(void *buf, size_t size, DllEntry entry) {
 
   DllMainData d = {
     .registerCommand = RegisterCommand,
+    .sleep = usleep,
     .getProcAddr = getProcAddress
   };
 

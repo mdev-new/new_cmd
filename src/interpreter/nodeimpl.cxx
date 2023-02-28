@@ -1,10 +1,9 @@
-#include "parser.hpp"
+#include "parser/parser.hpp"
 #include "interpreter.hh"
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
-#include "win.hh"
-#include "shared.hh"
+#include "standard.h"
 
 #include "commands.hh"
 

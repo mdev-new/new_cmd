@@ -1,7 +1,7 @@
 #pragma once
-#include "nodes.hh"
-#include "shared.hh"
-#include "lexer.hpp"
+#include "interpreter/nodes.hh"
+#include "interpreter/lexer/token.hpp"
+#include "utilities/hashing.hpp"
 
 #define fe(x,y,z) {consthash(x), { y,z } },
 

@@ -1,9 +1,9 @@
 #include "commands.hh"
-#include "shared.hh"
-#include "lexer.hpp"
+#include "interpreter/lexer/token.hpp"
 
-#include "win.hh"
-#include "nodes.hh"
+#include "standard.h"
+#include "interpreter/nodes.hh"
+#include "utilities/hashing.hpp"
 
 // todo use windows functions on win and linux functions on linux
 // lets not rely as much on stdlib
