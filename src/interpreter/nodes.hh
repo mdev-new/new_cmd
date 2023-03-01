@@ -81,7 +81,7 @@ struct Node {
 	};
 
 	size_t srcStart, srcEnd;
-	Node(decltype(type) type, char *start, char *end);
+	Node(decltype(type) type, char *start = nullptr, char *end = nullptr);
 
 	typedef Node super;
 };

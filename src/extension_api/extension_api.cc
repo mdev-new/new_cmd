@@ -1,7 +1,7 @@
 #include "interpreter/commands.hh"
 
 #if defined(_WIN32)
-  #include "standard.hh"
+  #include "standard.h"
 #elif defined(__APPLE__)
 # error extension api NOT IMPLEMENTED
 #elif defined(__linux__)
@@ -43,8 +43,8 @@ void hookDll(void *buf, size_t size, DllEntry entry) {
 #endif
 
   DllMainData d = {
-    .registerCommand = RegisterCommand,
-    .sleep = usleep,
+    .registerCommand = (decltype(DllMainData::registerCommand)) RegisterCommand,
+    //.sleep = usleep,
     .getProcAddr = getProcAddress
   };
 
@@ -64,7 +64,7 @@ IFUN(doInject) {
 	size_t size = ftell(fp);
 	rewind(fp);
 
-	buffer = malloc(size);
+	buffer = (decltype(buffer)) malloc(size);
 	fread(buffer, size, 1, fp);
 
 	Header *header = (Header *)buffer;
@@ -74,26 +74,26 @@ IFUN(doInject) {
 	//exit(-1);
 
 	switch(header->compressionFlags & 0b1111) {
-	case UNCOMPRESSED: hookDll(buffer+header->sizeOfSelf, header->uncompressed_size, (DllEntry)buffer+header->sizeOfSelf+header->entryOffset); break;
+	case UNCOMPRESSED: hookDll(buffer+header->sizeOfSelf, header->uncompressed_size, (DllEntry)(buffer+header->sizeOfSelf+header->entryOffset)); break;
 	case ALGO_LZ77: {
-		char *decompBuffer = malloc(header->uncompressed_size);
+		char *decompBuffer = (decltype(decompBuffer)) malloc(header->uncompressed_size);
 		// todo error check
 
 		int decomp = lz77_decompress(buffer+header->sizeOfSelf, size-header->sizeOfSelf, decompBuffer, header->uncompressed_size+1, header->compressionFlags >> 27);
 		// todo error check
-		hookDll(decompBuffer, header->uncompressed_size, (DllEntry)decompBuffer+header->entryOffset);
+		hookDll(decompBuffer, header->uncompressed_size, (DllEntry)(decompBuffer+header->entryOffset));
 		//free(decompBuffer);
 		break;
 	} break;
 	case ALGO_DEFLATE: {
-		char *decompBuffer = malloc(header->uncompressed_size);
+		char *decompBuffer = (decltype(decompBuffer)) malloc(header->uncompressed_size);
 		// todo error check
 
 		int decomp = sinfl_decompress(decompBuffer, header->uncompressed_size+1, buffer+header->sizeOfSelf, size-header->sizeOfSelf);
 		// todo error check
 
 		// todo error check
-		hookDll(decompBuffer, header->uncompressed_size, (DllEntry)decompBuffer+header->entryOffset);
+		hookDll(decompBuffer, header->uncompressed_size, (DllEntry)(decompBuffer+header->entryOffset));
 		//free(decompBuffer);
 		break;
 	} break;

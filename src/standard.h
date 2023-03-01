@@ -6,10 +6,18 @@
 #include <conio.h>
 #include <direct.h>
 
-#define acess(x, y) _acess(x, y)
+#include <stdint.h>
+
+#define access(x, y) _access(x, y)
 #define setenv(name, value, overwrite) SetEnvironmentVariable(name, value)
 #define unsetenv(name) SetEnvironmentVariable(name, NULL)
 #define realpath(abs, rel) _fullpath(abs, rel, PATH_MAX)
+#define alloca(x) _alloca(x)
+
+#ifdef _MSC_VER 
+#define strncasecmp _strnicmp
+#define strcasecmp _stricmp
+#endif
 
 #define timersub(a, b, result)                                                \
   do {                                                                        \
@@ -34,4 +42,10 @@
 #include <stdint.h>
 #include <alloca.h>
 
+#endif
+
+#ifdef _MSC_VER
+	#define PACK( __Declaration__ ) __pragma( pack(push, 1) ) __Declaration__ __pragma( pack(pop))
+#else
+	#define PACK( __Declaration__ ) __Declaration__ __attribute__((__packed__))
 #endif

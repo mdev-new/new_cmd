@@ -75,8 +75,8 @@ int main(int argc, char *argv[]) {
 		size_t *llBuf = inBuffer; // lets ignore 32bit for now
 #ifdef __linux__
 		if(longBuf[0] == 1179403647) { // its an elf file!
-			size_t *elfSize = inBuffer+0x18;
-			entryOffset = *elfSize;
+			size_t *elfStart = inBuffer+0x18;
+			entryOffset = *elfStart;
 			//printf("%llx\n", entryOffset);
 		}
 #elif defined(_WIN32)
@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
 			PIMAGE_NT_HEADERS ntHeaders = (PIMAGE_NT_HEADERS)(inBuffer + ((PIMAGE_DOS_HEADER)inBuffer)->e_lfanew);
 
 			if (ntHeaders->OptionalHeader.AddressOfEntryPoint) {
-				entryOffset = (loaderData->imageBase + ntHeaders->OptionalHeader.AddressOfEntryPoint);
+				entryOffset = (inBuffer + ntHeaders->OptionalHeader.AddressOfEntryPoint);
 			}
 		}
 #endif

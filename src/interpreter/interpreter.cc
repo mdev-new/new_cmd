@@ -1,9 +1,4 @@
 #include "interpreter.hh"
-#include <unistd.h>
-#include <cstdio>
-#include <cstring>
-#include <climits>
-#include <cstdlib>
 #include "standard.h"
 #include "nodes.hh"
 #include "commands.hh"
@@ -12,7 +7,7 @@
 
 #define IFUN(name) int name(CallParams callParams)
 
-Interpreter::Interpreter(char *buffer, size_t size, InterpreterState *s = nullptr)
+Interpreter::Interpreter(char *buffer, size_t size, InterpreterState *s)
  : parser(buffer, size)
 {
 	if(s == nullptr) {

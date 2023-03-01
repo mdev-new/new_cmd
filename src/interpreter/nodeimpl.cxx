@@ -26,21 +26,21 @@ char *itoa_(int i) {
 }
 
 Node::Node(decltype(Node::type) type, char *start, char *end)
-	: srcStart(start),
-	  srcEnd(end),
+	: srcStart((size_t)start),
+	  srcEnd((size_t)end),
 	  type(type)
 {
 }
 
-uint64_t Node::evaluate(InterpreterState *s = nullptr) {
+uint64_t Node::evaluate(InterpreterState *s) {
 	switch(this->type & BARETYPE) {
-	case Node::Type::If: return TCAST(IfNode*, this)->evaluate(s);
-	case Node::Type::For: return TCAST(ForNode*, this)->evaluate(s);
-	case Node::Type::Call: return TCAST(CallNode*, this)->evaluate(s);
-	case Node::Type::BinOp: return TCAST(BinOpNode*, this)->evaluate();
-	case Node::Type::EnvVar: return TCAST(EnvVarNode*, this)->evaluate();
-	case Node::Type::Parentheses: return TCAST(ParenthesesNode*, this)->evaluate(s);
-	case Node::Type::Number: return TCAST(NumberNode*, this)->num;
+	case Node::Type::If: return (uint64_t)TCAST(IfNode*, this)->evaluate(s);
+	case Node::Type::For: return (uint64_t)TCAST(ForNode*, this)->evaluate(s);
+	case Node::Type::Call: return (uint64_t)TCAST(CallNode*, this)->evaluate(s);
+	case Node::Type::BinOp: return (uint64_t)TCAST(BinOpNode*, this)->evaluate();
+	case Node::Type::EnvVar: return (uint64_t)TCAST(EnvVarNode*, this)->evaluate();
+	case Node::Type::Parentheses: return (uint64_t)TCAST(ParenthesesNode*, this)->evaluate(s);
+	case Node::Type::Number: return (uint64_t)TCAST(NumberNode*, this)->num;
 	default: printf("hit default! %d\n", this->type); return 0;
 	}
 }
@@ -57,7 +57,7 @@ Node::operator int() const {
 /* === NumberNode === */
 
 NumberNode::NumberNode(int n)
-	: super(Node::Type::Number, 0, 0)
+	: super(Node::Type::Number)
 {
 	this->num = n;
 }
@@ -71,8 +71,8 @@ NumberNode::operator int() const {
 
 /* === StringNode === */
 
-StringNode::StringNode(char *s, bool singlequote = false, std::vector<EnvVarNode*> *substitutions = nullptr)
-	: super(Node::Type::String, 0, 0),
+StringNode::StringNode(char *s, bool singlequote = false, std::vector<EnvVarNode*> *substitutions)
+	: super(Node::Type::String),
 	singlequote(singlequote),
 	substitutions(substitutions)
 {
@@ -121,7 +121,7 @@ mkstringify(IdNode, this->str);
 /* === ParenthesesNode === */
 
 ParenthesesNode::ParenthesesNode()
-	: super(Node::Type::Parentheses | WITHCHILDREN, 0, 0)
+	: super(Node::Type::Parentheses | WITHCHILDREN)
 {
 	this->children = new std::vector<Node*>();
 }
@@ -143,7 +143,7 @@ mkstringify(ParenthesesNode, nullptr);
 /* === BinOpNode === */
 
 BinOpNode::BinOpNode(Node *lhs, Node *rhs)
-	: Node(Node::Type::BinOp, 0, 0)
+	: Node(Node::Type::BinOp)
 {
 	this->lhs = lhs;
 	this->rhs = rhs;
@@ -154,42 +154,22 @@ BinOpNode::operator int() const {
 }
 
 
-/* === AdditionNode === */
+#define BinOpNodeImpl(NAME, OPERATION) \
+int NAME::evaluate() { \
+	return int(lhs->evaluate()) OPERATION int(rhs->evaluate()); \
+} \
+mkstringify(NAME, itoa_(evaluate()))
 
-int AdditionNode::evaluate() {
-	return int(lhs->evaluate()) + int(rhs->evaluate());
-}
-mkstringify(AdditionNode, itoa_(evaluate()));
-
-
-/* === SubtractionNode === */
-
-int SubtractionNode::evaluate() {
-	return int(lhs->evaluate()) - int(rhs->evaluate());
-}
-mkstringify(SubtractionNode, itoa_(evaluate()));
-
-
-/* === MultiplicationNode === */
-
-int MultiplicationNode::evaluate() {
-	return int(lhs->evaluate()) * int(rhs->evaluate());
-}
-mkstringify(MultiplicationNode, itoa_(evaluate()));
-
-
-/* === DivisionNode === */
-
-int DivisionNode::evaluate() {
-	return int(lhs->evaluate()) / int(rhs->evaluate());
-}
-mkstringify(DivisionNode, itoa_(evaluate()));
+BinOpNodeImpl(AdditionNode, +);
+BinOpNodeImpl(SubtractionNode, -);
+BinOpNodeImpl(MultiplicationNode, *);
+BinOpNodeImpl(DivisionNode, /);
 
 
 /* === EnvVarNode === */
 
 EnvVarNode::EnvVarNode(char *name, bool delayedExpansion)
-	:super(Node::Type::EnvVar, 0, 0),
+	:super(Node::Type::EnvVar),
 	 name(name),
 	 delayedExpansion(delayedExpansion)
 {
@@ -210,7 +190,7 @@ mkstringify(EnvVarNode, evaluate());
 
 /* === CallNode === */
 CallNode::CallNode(char *name, std::vector<Node*> arguments, bool silent = false)
-: Node(Node::Type::Call | WITHCHILDREN, 0, 0),
+: Node(Node::Type::Call | WITHCHILDREN),
   silent(silent),
   funcName(strdup(name)),
   hash(_hashfunc_(this->funcName, true))
@@ -258,14 +238,14 @@ mkstringify(CallNode, this->funcName);
 
 /* === EqualsNode === */
 AssignNode::AssignNode(Node *lhs, Node *rhs)
-	: super(Node::Type::Assign, 0, 0)
+	: super(Node::Type::Assign)
 {
 	this->one.lhs = lhs;
 	this->one.rhs = rhs;
 }
 
 AssignNode::AssignNode(Node **lhs, int lhsCount, Node *rhs)
-	: super(Node::Type::Assign | WITHCHILDREN, 0, 0)
+	: super(Node::Type::Assign | WITHCHILDREN)
 {
 	this->many.lhs = lhs;
 	this->many.rhs = rhs;
@@ -299,7 +279,7 @@ mkstringify(LabelNode, this->str);
 /* === CompareNode === */
 
 CompareNode::CompareNode(Node *lhs, Node *rhs, CompareType compareType)
-	: super(Node::Type::Compare, 0, 0),
+	: super(Node::Type::Compare),
 	cmpType(compareType)
 {
 	this->lhs = lhs;
@@ -365,7 +345,7 @@ CompareNode::CompareNode(Node *lhs, Node *rhs, CompareType compareType)
 	}
 }
 
-bool CompareNode::evaluate(bool caseInsensitive = false) {
+bool CompareNode::evaluate(bool caseInsensitive) {
 	return this->cmpFunc(this->lhs, this->rhs, caseInsensitive);
 }
 
@@ -373,8 +353,8 @@ mkstringify(CompareNode, nullptr);
 
 /* == ForNode == */
 // params = /type "opts" ()
-ForNode::ForNode(ForType type, char id, ParenthesesNode *cond, Node *body, StringNode *opts = nullptr)
-	: super(Node::Type::For, 0, 0),
+ForNode::ForNode(ForType type, char id, ParenthesesNode *cond, Node *body, StringNode *opts)
+	: super(Node::Type::For),
 	forType(type),
 	id(id),
 	loopBody(body),
@@ -437,8 +417,8 @@ uint64_t ForNode::evaluate(InterpreterState *state) {
 
 mkstringify(ForNode, nullptr);
 
-IfNode::IfNode(CompareNode *cond, Node *ifBodyRoot, Node *elseBodyRoot = nullptr, bool invert = false, bool caseInsensitive = false)
-	: super(Node::Type::If, 0, 0),
+IfNode::IfNode(CompareNode *cond, Node *ifBodyRoot, Node *elseBodyRoot, bool invert, bool caseInsensitive)
+	: super(Node::Type::If),
 	condition(cond),
 	sucess(ifBodyRoot),
 	failure(elseBodyRoot),
