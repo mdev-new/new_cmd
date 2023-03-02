@@ -14,19 +14,9 @@
 // 2. speed
 // 3. also speed
 
-//#define WIN32_LEAN_AND_MEAN
-//#include <Windows.h>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-
-#include <sys/time.h>
-
-#include <unistd.h>
-
+#include "standard.h"
 #include <magic_enum.hpp>
 
-#include "standard.h"
 #include "interpreter/interpreter.hh"
 
 template<typename T>

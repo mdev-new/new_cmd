@@ -50,7 +50,6 @@ endif()
 
 target_link_libraries(new_cmd mpark_patterns magic_enum)
 
-
 # --- compressor
 add_executable(compressor
     src/extension_api/sdk/compress.c src/utilities/file_utils.c

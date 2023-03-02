@@ -12,11 +12,14 @@
 #define setenv(name, value, overwrite) SetEnvironmentVariable(name, value)
 #define unsetenv(name) SetEnvironmentVariable(name, NULL)
 #define realpath(abs, rel) _fullpath(abs, rel, PATH_MAX)
-#define alloca(x) _alloca(x)
 
-#ifdef _MSC_VER 
+#ifdef _MSC_VER
 #define strncasecmp _strnicmp
 #define strcasecmp _stricmp
+#define alloca(x) _alloca(x)
+#else
+#include <unistd.h>
+#include <sys/time.h>
 #endif
 
 #define timersub(a, b, result)                                                \

@@ -8,18 +8,17 @@
 
 #include "interpreter/nodes.hh"
 
-using RegisterCmdPtr = void(*)(char *cmd, void * fn);
-using SetEnvVarPtr = bool(*)(char *name, char *value);
-using SleepPtr = void(*)(int len);
-using CreateThreadPtr = bool(*)(void *threadStart);
+using RegisterCmdPtr = void(stdcall*)(char *cmd, void * fn);
+using SetEnvVarPtr = bool(stdcall*)(char *name, char *value);
+using SleepPtr = void(stdcall*)(int len);
+using CreateThreadPtr = bool(stdcall*)(void (*threadStart)(void*));
 
 struct DllMainData {
+  SleepPtr sleep;
   RegisterCmdPtr registerCommand;
   SetEnvVarPtr setEnvVar;
-  SleepPtr sleep;
   CreateThreadPtr createThread;
   void*(*getProcAddr)(char *modName, char *fnName);
 };
 
-using DllEntry = void(stdcall*)(DllMainData *data);
-#define ExtEntryPoint extern "C" int DllEntryPoint(DllMainData *data)
+using DllEntry = int(stdcall*)(DllMainData *data);

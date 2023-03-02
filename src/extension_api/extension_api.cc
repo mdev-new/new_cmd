@@ -1,11 +1,11 @@
 #include "interpreter/commands.hh"
 
+#include "standard.h"
+
 #if defined(_WIN32)
-  #include "standard.h"
 #elif defined(__APPLE__)
-# error extension api NOT IMPLEMENTED
+# error APPLE extension api NOT IMPLEMENTED
 #elif defined(__linux__)
-	#include "standard.h"
   #include <dlfcn.h>
   #include <sys/mman.h>
 #endif
@@ -20,12 +20,9 @@
 #define SINFL_IMPLEMENTATION
 #include "extern/sinfl.hh"
 
-#include <cstdlib>
-#include <cstdio>
-
 void *getProcAddress(char *mod, char *fn) {
   // todo cache results
-#if   defined(_WIN32)
+#if defined(_WIN32)
   return GetProcAddress(GetModuleHandleA(mod), fn);
 #elif defined(__APPLE__)
 # error __PRETTY_FUNCTION__ NOT IMPLEMENTED
@@ -34,21 +31,46 @@ void *getProcAddress(char *mod, char *fn) {
 #endif
 }
 
-void hookDll(void *buf, size_t size, DllEntry entry) {
-
+void *allocExecutable(size_t size) {
+	void *ptr = nullptr;
 #ifdef __linux__
-  mprotect(buf, size, PROT_READ | PROT_WRITE | PROT_EXEC);
+  ptr = malloc(size);
+  mprotect(ptr, size, PROT_READ | PROT_WRITE | PROT_EXEC);
 #elif defined(_WIN32)
-  VirtualProtect(buf, size, PAGE_EXECUTE_READWRITE, nullptr);
+  ptr = VirtualAlloc(nullptr, size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 #endif
+	if (ptr == nullptr) printf("alloc failed!\n");
+	return ptr;
+}
+
+void *freeExecutable(void *ptr, size_t size = 0) {
+#ifdef __linux__
+  free(ptr);
+#elif defined(_WIN32)
+  ptr = VirtualFree(ptr, size, MEM_RELEASE);
+#endif
+}
+
+void stdcall RegisterCommand(char *cmd, CallPtr func) {
+	multicharMapping[_hashfunc_(cmd)] = std::make_pair(Token::Type::BuiltIn, func);
+}
+
+void stdcall print() {
+	return printf("Bruh\n");
+}
+
+void hookDll(DllEntry entry) {
 
   DllMainData d = {
-    .registerCommand = (decltype(DllMainData::registerCommand)) RegisterCommand,
-    //.sleep = usleep,
+    .sleep = print,
+	.registerCommand = (decltype(DllMainData::registerCommand)) RegisterCommand,
+    .setEnvVar = nullptr,
+    .createThread = nullptr,
     .getProcAddr = getProcAddress
   };
 
-  entry(&d);
+  int x = entry(&d);
+  printf("x: %llx\n", x);
 
 }
 
@@ -64,7 +86,7 @@ IFUN(doInject) {
 	size_t size = ftell(fp);
 	rewind(fp);
 
-	buffer = (decltype(buffer)) malloc(size);
+	buffer = (decltype(buffer)) allocExecutable(size); // files can be uncompressed
 	fread(buffer, size, 1, fp);
 
 	Header *header = (Header *)buffer;
@@ -74,33 +96,33 @@ IFUN(doInject) {
 	//exit(-1);
 
 	switch(header->compressionFlags & 0b1111) {
-	case UNCOMPRESSED: hookDll(buffer+header->sizeOfSelf, header->uncompressed_size, (DllEntry)(buffer+header->sizeOfSelf+header->entryOffset)); break;
+	case UNCOMPRESSED: hookDll((DllEntry)(buffer+header->sizeOfSelf)); break;
 	case ALGO_LZ77: {
-		char *decompBuffer = (decltype(decompBuffer)) malloc(header->uncompressed_size);
+		char *decompBuffer = (decltype(decompBuffer)) allocExecutable(header->uncompressed_size);
 		// todo error check
 
 		int decomp = lz77_decompress(buffer+header->sizeOfSelf, size-header->sizeOfSelf, decompBuffer, header->uncompressed_size+1, header->compressionFlags >> 27);
 		// todo error check
-		hookDll(decompBuffer, header->uncompressed_size, (DllEntry)(decompBuffer+header->entryOffset));
+		hookDll((DllEntry)(decompBuffer));
 		//free(decompBuffer);
 		break;
 	} break;
 	case ALGO_DEFLATE: {
-		char *decompBuffer = (decltype(decompBuffer)) malloc(header->uncompressed_size);
+		char *decompBuffer = (decltype(decompBuffer)) allocExecutable(header->uncompressed_size);
 		// todo error check
 
 		int decomp = sinfl_decompress(decompBuffer, header->uncompressed_size+1, buffer+header->sizeOfSelf, size-header->sizeOfSelf);
 		// todo error check
 
 		// todo error check
-		hookDll(decompBuffer, header->uncompressed_size, (DllEntry)(decompBuffer+header->entryOffset));
+		hookDll((DllEntry)(decompBuffer));
 		//free(decompBuffer);
 		break;
 	} break;
 	default: break;
 	}
 
-	free(buffer);
+	//free(buffer);
 	return 0;
 
 }

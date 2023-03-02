@@ -15,7 +15,6 @@ PACK(typedef struct {
 	char headerVersion;
 	int compressionFlags;
 	long uncompressed_size;
-	size_t entryOffset;
 } Header);
 
 #define MAGIC 'Mk' // in file its in reverse order

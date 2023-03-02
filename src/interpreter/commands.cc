@@ -366,7 +366,3 @@ std::unordered_map<_hashtype_, std::pair<decltype(Token::type), CallPtr>, Hasher
 	fe("extend", Token::Type::BuiltIn, doInject)
 //#endif
 };
-
-void RegisterCommand(char *cmd, CallPtr func) {
-	multicharMapping[_hashfunc_(cmd)] = std::make_pair(Token::Type::BuiltIn, func);
-}

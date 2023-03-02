@@ -34,13 +34,13 @@ Node::Node(decltype(Node::type) type, char *start, char *end)
 
 uint64_t Node::evaluate(InterpreterState *s) {
 	switch(this->type & BARETYPE) {
-	case Node::Type::If: return (uint64_t)TCAST(IfNode*, this)->evaluate(s);
-	case Node::Type::For: return (uint64_t)TCAST(ForNode*, this)->evaluate(s);
-	case Node::Type::Call: return (uint64_t)TCAST(CallNode*, this)->evaluate(s);
-	case Node::Type::BinOp: return (uint64_t)TCAST(BinOpNode*, this)->evaluate();
-	case Node::Type::EnvVar: return (uint64_t)TCAST(EnvVarNode*, this)->evaluate();
-	case Node::Type::Parentheses: return (uint64_t)TCAST(ParenthesesNode*, this)->evaluate(s);
-	case Node::Type::Number: return (uint64_t)TCAST(NumberNode*, this)->num;
+	case Node::Type::If: return TCAST(IfNode*, this)->evaluate(s);
+	case Node::Type::For: return TCAST(ForNode*, this)->evaluate(s);
+	case Node::Type::Call: return TCAST(CallNode*, this)->evaluate(s);
+	case Node::Type::BinOp: return TCAST(BinOpNode*, this)->evaluate();
+	case Node::Type::EnvVar: return TCAST(EnvVarNode*, this)->evaluate();
+	case Node::Type::Parentheses: return TCAST(ParenthesesNode*, this)->evaluate(s);
+	case Node::Type::Number: return TCAST(NumberNode*, this)->num;
 	default: printf("hit default! %d\n", this->type); return 0;
 	}
 }

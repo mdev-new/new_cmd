@@ -5,8 +5,6 @@
 
 // optimize as much as possible
 
-#define IFUN(name) int name(CallParams callParams)
-
 Interpreter::Interpreter(char *buffer, size_t size, InterpreterState *s)
  : parser(buffer, size)
 {

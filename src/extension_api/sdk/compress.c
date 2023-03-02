@@ -29,12 +29,16 @@ int deflcomp(uint8_t *input, uint8_t *output, uint32_t input_length) {
 
 // TODO error check?
 // TODO convert to binary here and dont rely on objcopy
-// ./compress in_exe in_bin out compression_type
+// ./compress in out compression_type
 int main(int argc, char *argv[]) {
 	uint32_t type = 0, bits = 0;
 	CompressFun compressPtr = NULL;
 
-	switch(atol(argv[4])) {
+	//FILE *fptr_r_exe = fopen(argv[1], "rb");
+	FILE *fptr_r_bin = fopen(argv[1], "rb");
+	FILE *fptr_w = fopen(argv[2], "wb");
+
+	switch(atol(argv[3])) {
 	case 1: {
 		type = ALGO_LZ77;
 		bits = LZ77_MATCH_LENGTH_BITS;
@@ -55,13 +59,9 @@ int main(int argc, char *argv[]) {
 	} break;
 	}
 
-	FILE *fptr_r_exe = fopen(argv[1], "rb");
-	FILE *fptr_r_bin = fopen(argv[2], "rb");
-	FILE *fptr_w = fopen(argv[3], "wb");
-
 	size_t entryOffset = 0;
 
-	{
+	/*{
 		fseek(fptr_r_exe, 0, SEEK_END);
 		size_t inlen = ftell(fptr_r_exe);
 		fseek(fptr_r_exe, 0, SEEK_SET);
@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
 			}
 		}
 #endif
-	}
+	}*/
 
 	size_t sz = get_file_size(fptr_r_bin);
 	char *inBuffer = malloc(sz);
@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
 		.headerVersion = VERSION,
 		.compressionFlags = (bits << 27) | type,
 		.uncompressed_size = sz,
-		.entryOffset = entryOffset
+		//.entryOffset = entryOffset
 	};
 
 	//printf("%d\n", header.compression);
