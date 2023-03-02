@@ -3,15 +3,15 @@
 
 jmp start
 
-data dq 0
-
 start:
-	pop rbx
-	call [rbx]
+	mov rax, rcx
+	mov ecx, 20
+	call [rax]
+	mov rax, 10
 	retn
 
 counter dw 0
 test_command:
 	add dword [counter], 1
-	mov eax, [counter]
-	ret
+	mov eax, dword [counter]
+	retn

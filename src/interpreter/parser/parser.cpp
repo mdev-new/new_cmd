@@ -396,10 +396,10 @@ void Parser::parse() {
 
 	SortTokens(tokens, 0, 0);
 
-	fprintf(stderr, "[%s] === Token printout ===\n", __FILE__);
-	for(int x = 0; x < tokens.size()-1; x++) {
-		fprintf(stderr, "[%s] %d\t%s\n", __FILE__, tokens[x].type, magic_enum::enum_name((Token::Type)(tokens[x].type)).data());
-	}
+	//fprintf(stderr, "[%s] === (Sorted) Token printout ===\n", __FILE__);
+	//for(int x = 0; x < tokens.size()-1; x++) {
+	//	fprintf(stderr, "[%s] %d\t%s\n", __FILE__, tokens[x].type, magic_enum::enum_name((Token::Type)(tokens[x].type)).data());
+	//}
 
 	Node *current;
 	for(i = 0, skip = 1; i < tokens.size()-1; i+=skip, skip = 1) {

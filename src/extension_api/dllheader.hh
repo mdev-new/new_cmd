@@ -9,13 +9,15 @@ enum {
 	ALGO_DEFLATE
 };
 
-PACK(typedef struct {
+PACK(struct _Header {
 	short magic;
 	char sizeOfSelf;
 	char headerVersion;
 	int compressionFlags;
 	long uncompressed_size;
-} Header);
+});
+
+typedef struct _Header Header;
 
 #define MAGIC 'Mk' // in file its in reverse order
 #define VERSION 1

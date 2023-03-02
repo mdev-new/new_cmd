@@ -55,8 +55,9 @@ void stdcall RegisterCommand(char *cmd, CallPtr func) {
 	multicharMapping[_hashfunc_(cmd)] = std::make_pair(Token::Type::BuiltIn, func);
 }
 
-void stdcall print() {
-	return printf("Bruh\n");
+void stdcall print(int a) {
+	printf("Hooked native code prints: %d\n", a);
+	return;
 }
 
 void hookDll(DllEntry entry) {
@@ -70,7 +71,7 @@ void hookDll(DllEntry entry) {
   };
 
   int x = entry(&d);
-  printf("x: %llx\n", x);
+  printf("Hooked native code returned: %d\n", x);
 
 }
 

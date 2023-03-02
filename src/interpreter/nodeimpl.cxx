@@ -288,57 +288,56 @@ CompareNode::CompareNode(Node *lhs, Node *rhs, CompareType compareType)
 	switch(compareType) {
 	case CompareType::Greater: {
 		this->cmpFunc = [](Node *lhs, Node *rhs, bool caseInsensitive) {
-			return lhs->num > rhs->num;
+			return int(lhs->num) > int(rhs->num);
 		};
 		break;
 	}
 	case CompareType::Less: {
 		this->cmpFunc = [](Node *lhs, Node *rhs, bool caseInsensitive) {
-			return lhs->num < rhs->num;
+			return int(lhs->num) < int(rhs->num);
 		};
 		break;
 	}
 	case CompareType::GreaterOrEqual: {
 		this->cmpFunc = [](Node *lhs, Node *rhs, bool caseInsensitive) {
-			return lhs->num >= rhs->num;
+			return int(lhs->num) >= int(rhs->num);
 		};
 		break;
 	}
 	case CompareType::LessOrEqual: {
 		this->cmpFunc = [](Node *lhs, Node *rhs, bool caseInsensitive) {
-			return lhs->num <= rhs->num;
+			return int(lhs->num) <= int(rhs->num);
 		};
 		break;
 	}
 	case CompareType::Equal: {
 		this->cmpFunc = [](Node *lhs, Node *rhs, bool caseInsensitive) {
-			return lhs->num == rhs->num;
+			return int(lhs->num) == int(rhs->num);
 		};
 		break;
 	}
 	case CompareType::NotEqual: {
 		this->cmpFunc = [](Node *lhs, Node *rhs, bool caseInsensitive) {
-			return lhs->num != rhs->num;
+			return int(lhs->num) != int(rhs->num);
 		};
 		break;
 	}
 	case CompareType::String: {
 		this->cmpFunc = [](Node *lhs, Node *rhs, bool caseInsensitive) {
-			//printf("%s %s\n", lhs->str, rhs->str);
-			if(caseInsensitive) return strcasecmp(lhs->str, rhs->str) == 0;
-			else return strcmp(lhs->str, rhs->str) == 0;
+			if(caseInsensitive) return strcasecmp(lhs->stringify().second, rhs->stringify().second) == 0;
+			else return strcmp(lhs->stringify().second, rhs->stringify().second) == 0;
 		};
 		break;
 	}
 	case CompareType::Exists: {
 		this->cmpFunc = [](Node *lhs, Node *rhs, bool caseInsensitive) {
-			return access(lhs->str, F_OK) == 0;
+			return access(lhs->stringify().second, F_OK) == 0;
 		};
 		break;
 	}
 	case CompareType::Defined: {
 		this->cmpFunc = [](Node *lhs, Node *rhs, bool caseInsensitive) {
-			return getenv(lhs->str) != NULL;
+			return getenv(lhs->stringify().second) != NULL;
 		};
 		break;
 	}
