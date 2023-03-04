@@ -9,8 +9,8 @@ using SleepPtr = void(stdcall*)(int len);
 using CreateThreadPtr = bool(stdcall*)(void (*threadStart)(void*));
 
 PACK(struct DllMainData {
-  SleepPtr sleep;
   RegisterCmdPtr registerCommand;
+  SleepPtr sleep;
   SetEnvVarPtr setEnvVar;
   CreateThreadPtr createThread;
   void*(*getProcAddr)(char *modName, char *fnName);

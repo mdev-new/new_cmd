@@ -45,9 +45,9 @@ Lexer::Lexer(uint8_t *buffer, size_t size)
 	}
 }
 
-// LIMITATION: env vars cannot start with numbers
-static std::regex normalExpansion("%[a-zA-Z]([a-zA-Z0-9\[\]].*)%");
-static std::regex delayedExpansion("![a-zA-Z%]([a-zA-Z0-9\[\]].*)!");
+// LIMITATION: env vars cannot start with numbers and spaces
+static std::regex normalExpansion("%[a-zA-Z](.*)%");
+static std::regex delayedExpansion("![a-zA-Z%](.*)!");
 
 //todo nested env vars
 
@@ -149,9 +149,9 @@ Token Lexer::get() {
 		pattern('-', _, _, _) = [&] { ReturnToken(Token::Type::Minus); },
 		pattern('*', _, _, _) = [&] { ReturnToken(Token::Type::Asterisk); },
 		pattern('/', _, _, _) = [&] { ReturnToken(Token::Type::Slash); },
-		pattern('.', _, _, _) = [&] { ReturnToken(Token::Type::Dot); },
+		//pattern('.', _, _, _) = [&] { ReturnToken(Token::Type::Dot); },
 		pattern(',', _, _, _) = [&] { ReturnToken(Token::Type::Comma); },
-		pattern(':', _, _, _) = [&] { ReturnToken(Token::Type::Colon); },
+		//pattern(':', _, _, _) = [&] { ReturnToken(Token::Type::Colon); },
 		pattern(';', _, _, _) = [&] { ReturnToken(Token::Type::Semicolon); },
 		pattern('|', _, _, _) = [&] { ReturnToken(Token::Type::Pipe); },
 		pattern('~', _, _, _) = [&] { ReturnToken(Token::Type::Tilde); },

@@ -22,7 +22,7 @@ private:
 	const bool isdigit(char c) const { return '0' <= c && c <= '9'; }
 	const bool isalpha(char c) const { return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'); }
 	const bool validIdStart(char c) const { return (isalpha(c) || c == '_'); }
-	const bool validIdBody(char c) const { return validIdStart(c) || isdigit(c); }
+	const bool validIdBody(char c) const { return validIdStart(c) || isdigit(c) || c == '.' || c == ':' || c == '\\' || c == '/'; }
 	const bool islxdigit(char c) const { return c >= 'a' && c <= 'f'; }
 	const bool isuxdigit(char c) const { return c >= 'A' && c <= 'F'; }
 	const bool isxdigit(char c) const { return islxdigit(c) || isuxdigit(c); }

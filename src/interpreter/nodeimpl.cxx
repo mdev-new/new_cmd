@@ -164,7 +164,14 @@ BinOpNodeImpl(AdditionNode, +);
 BinOpNodeImpl(SubtractionNode, -);
 BinOpNodeImpl(MultiplicationNode, *);
 BinOpNodeImpl(DivisionNode, /);
-
+BinOpNodeImpl(BinaryOrNode, |);
+BinOpNodeImpl(BinaryAndNode, &);
+//BinOpNodeImpl(BinaryNot, ~);
+BinOpNodeImpl(BinaryModulo, %);
+BinOpNodeImpl(BinaryXor, ^);
+BinOpNodeImpl(LogicalOrNode, ||);
+BinOpNodeImpl(LogicalAndNode, &&);
+//BinOpNodeImpl(LogicalNot, !);
 
 /* === EnvVarNode === */
 
@@ -226,6 +233,20 @@ int CallNode::evaluate(InterpreterState *state) {
 		//printf("%s\n", strndup(state->buffer[this->args.front().txtStart], this->args.front().txtStart+this->args.back().txtStart+this->args.back().txtLength));
 
 #ifdef _WIN64
+		printf("here %s\n", this->funcName);
+		STARTUPINFO startup_info;
+		memset(&startup_info, 0, sizeof(STARTUPINFO));
+		startup_info.cb = sizeof(STARTUPINFO);
+
+		PROCESS_INFORMATION process_info;
+		memset(&process_info, 0, sizeof(PROCESS_INFORMATION));
+
+		// first createprocess, if fails try shellexecute
+		bool x = ::CreateProcessA(this->funcName, "", NULL, NULL, TRUE, CREATE_UNICODE_ENVIRONMENT | NORMAL_PRIORITY_CLASS, NULL, NULL, &startup_info, &process_info);
+		if (!x) {
+			printf("CreateProcess failed, error: %d\n", GetLastError());
+			return 0;
+		}
 #else
 #endif
 

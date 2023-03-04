@@ -60,11 +60,15 @@ void stdcall print(int a) {
 	return;
 }
 
+static void stdcall sleep(int ms) {
+	Sleep(ms); // standard.h for linux has macro Sleep so we're clear here
+}
+
 void hookDll(DllEntry entry) {
 
   DllMainData d = {
-    .sleep = print,
 	.registerCommand = (decltype(DllMainData::registerCommand)) RegisterCommand,
+    .sleep = sleep,
     .setEnvVar = nullptr,
     .createThread = nullptr,
     .getProcAddr = getProcAddress
