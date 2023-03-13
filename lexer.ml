@@ -77,7 +77,7 @@ module Lexer = struct
 		| ('\t', _) -> skip lexer
 		| ('\n', _) -> skip lexer
 		| ('\r', _) -> skip lexer
-		| ('\x00', _) -> (lexer, Token.Eof)
+		| (null_byte, _) -> (lexer, Token.Eof)
 		| (c, _) ->
 			if (is_letter c) then
 				let (new_lex, tok_literal) =  read_identifier lexer in

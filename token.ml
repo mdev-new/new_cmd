@@ -103,7 +103,6 @@ module Token = struct
 	| Leq -> "Leq"
 	| Geq -> "Geq"
 
-	(* TODO, convert from association list to map *)
 	let string_to_token = [
 		"if", If;
 		"else", Else;

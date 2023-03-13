@@ -2,12 +2,16 @@ include Parser
 
 module Interpreter = struct
 
-let stringify = function
-| Parser.Number a -> string_of_int a
-| Parser.String a -> a
+let interpret_node = function
+| Node.Call arg -> 0
+| Node.Comment arg -> 0
 
 let rec interpret = function
-| [] -> begin end
-| h :: t -> begin print_endline (stringify (h())); interpret t; end
+| [] -> begin (* empty block *) end
+| head :: tail ->
+  begin
+    print_endline (Parser.stringify (head()));
+    interpret tail;
+  end
 
 end
