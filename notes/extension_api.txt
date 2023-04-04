@@ -1,1 +1,0 @@
-Extensions must be posix compliant (one binary for both Windows and Linux)

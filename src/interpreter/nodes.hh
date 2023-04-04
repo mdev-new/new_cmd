@@ -39,7 +39,7 @@ struct Node;
 struct CallParams {
 	std::vector<Node*>* params;
 	InterpreterState *state;
-	FILE *fpRead, *fpWrite;
+	FILE *fpRead, *fpWrite, *fpErr;
 };
 
 using CallPtr = int(*)(CallParams callParams);
@@ -83,6 +83,8 @@ struct Node {
 	size_t srcStart, srcEnd;
 	Node(decltype(type) type, char *start = nullptr, char *end = nullptr);
 
+	virtual ~Node();
+
 	typedef Node super;
 };
 
@@ -97,6 +99,8 @@ struct StringNode : public Node {
 	StringNode(char *s, bool singlequote = false, std::vector<EnvVarNode*> *substitutions = nullptr);
 	bool singlequote = false;
 	stringifyfun;
+
+	uint32_t hash;
 
 private:
 	std::vector<EnvVarNode*> *substitutions;
@@ -164,8 +168,11 @@ struct CallNode final : public Node {
 	bool silent;
 	uint32_t hash;
 
-	CallNode(char *name, std::vector<Node*> args, bool slient = false);
+	FILE *fp_r, *fp_w, *fp_err;
+
+	CallNode(char *name, std::vector<Node*> args, bool slient = false, char *redirectIn = nullptr, char *redirectOut = nullptr, bool append_stdout = false, char *redirectErr = nullptr, bool append_err = false);
 	int evaluate(InterpreterState *state);
+	~CallNode();
 	stringifyfun;
 };
 

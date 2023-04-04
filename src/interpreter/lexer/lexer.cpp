@@ -10,8 +10,6 @@
 #include <regex>
 #include <string>
 
-// todo regex
-
 static char *strndup(const char *str, size_t chars) {
 	char *buffer = calloc(chars +1, sizeof (char));
 	if (!buffer) return nullptr;
@@ -40,6 +38,8 @@ Lexer::Lexer(uint8_t *buffer, size_t size)
    length(size),
    idx(0)
 {
+	/// todo better way of doing this
+	// this doesnt support multiple instances of lexer
 	for (auto &it : multicharTokens) {
 		multicharMapping.insert(it);
 	}
@@ -121,7 +121,6 @@ Token Lexer::get() {
 	};
 
 	using namespace mpark::patterns;
-//	IDENTIFIERS(_x, _y);
 	Token t = match(buffer[idx], buffer[idx+1], isdigit(buffer[idx]), isalpha(buffer[idx])) (
 		pattern('=', '=', _, _) = [&] { ReturnToken1(Token::Type::Dequal, 2); },
 		pattern('>', '>', _, _) = [&] { ReturnToken1(Token::Type::PipeOutAppend, 2); },
@@ -152,7 +151,7 @@ Token Lexer::get() {
 		//pattern('.', _, _, _) = [&] { ReturnToken(Token::Type::Dot); },
 		pattern(',', _, _, _) = [&] { ReturnToken(Token::Type::Comma); },
 		//pattern(':', _, _, _) = [&] { ReturnToken(Token::Type::Colon); },
-		pattern(';', _, _, _) = [&] { ReturnToken(Token::Type::Semicolon); },
+		//pattern(';', _, _, _) = [&] { ReturnToken(Token::Type::Semicolon); },
 		pattern('|', _, _, _) = [&] { ReturnToken(Token::Type::Pipe); },
 		pattern('~', _, _, _) = [&] { ReturnToken(Token::Type::Tilde); },
 		pattern('&', _, _, _) = [&] { ReturnToken(Token::Type::And); },

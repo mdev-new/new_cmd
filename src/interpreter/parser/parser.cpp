@@ -192,6 +192,7 @@ std::pair<int, Node*> makeNode(std::vector<Token> &tokens, int i, int level) {
 		return std::make_pair(lskip+rskip+1, new AssignNode(lhs, rhs));
 	}
 
+	// todo in number comparsions make sure lhs and rhs are numbers/env vars/parens
 	case Token::Type::Lss: {
 		auto [lskip, lhs] = makeNode(tokens, i+1, level+1);
 		auto [rskip, rhs] = makeNode(tokens, i+2, level+1);
@@ -229,6 +230,7 @@ std::pair<int, Node*> makeNode(std::vector<Token> &tokens, int i, int level) {
 	}
 
 	case Token::Type::Dequal: {
+		// todo stringify params
 		auto [lskip, lhs] = makeNode(tokens, i+1, level+1);
 		auto [rskip, rhs] = makeNode(tokens, i+2, level+1);
 		return std::make_pair(lskip+rskip+1, new CompareNode(lhs, rhs, CompareNode::CompareType::String));

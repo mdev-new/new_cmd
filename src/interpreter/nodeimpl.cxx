@@ -3,7 +3,12 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
+
 #include "standard.h"
+
+#ifdef _WIN64
+#include <shellapi.h>
+#endif
 
 #include "commands.hh"
 
@@ -16,12 +21,12 @@
 
 char *itoa_(int i) {
 	static char b[21] = {0};
-	char *c=b+20;
-	int x=abs(i);
+	char *c = b + 20;
+	int x = abs(i);
 	do
-		*--c = 48 + x % 10;
-	while(x && (x/=10));
-	if(i<0) *--c = 45;
+		*--c = '0' + (x % 10);
+	while(x && (x /= 10));
+	if(i < 0) *--c = '-';
 	return c;
 }
 
@@ -32,6 +37,7 @@ Node::Node(decltype(Node::type) type, char *start, char *end)
 {
 }
 
+// todo maybe make pure virtual?
 uint64_t Node::evaluate(InterpreterState *s) {
 	switch(this->type & BARETYPE) {
 	case Node::Type::If: return TCAST(IfNode*, this)->evaluate(s);
@@ -52,6 +58,10 @@ Node::operator int() const {
 	case Node::Type::BinOp: return int(*TCAST(EnvVarNode*, this));
 	default: return 0;
 	}
+}
+
+Node::~Node() {
+
 }
 
 /* === NumberNode === */
@@ -77,6 +87,7 @@ StringNode::StringNode(char *s, bool singlequote = false, std::vector<EnvVarNode
 	substitutions(substitutions)
 {
 	this->str = strdup(s);
+	this->hash = _hashfunc_(this->str);
 }
 
 std::pair<const char *, char *> StringNode::stringify() {
@@ -196,64 +207,72 @@ mkstringify(EnvVarNode, evaluate());
 
 
 /* === CallNode === */
-CallNode::CallNode(char *name, std::vector<Node*> arguments, bool silent = false)
+CallNode::CallNode(char *name, std::vector<Node*> arguments, bool silent = false, char *redirectIn = nullptr, char *redirectOut = nullptr, bool append_stdout = false, char *redirectErr = nullptr, bool appendErr = false)
 : Node(Node::Type::Call | WITHCHILDREN),
   silent(silent),
   funcName(strdup(name)),
   hash(_hashfunc_(this->funcName, true))
 {
 	this->children = new std::vector<Node*>(arguments);
+
+	// probably not ideal to fopen those in the constructor but who cares
+	this->fp_r = redirectIn? fopen(redirectIn, "r") : stdin;
+	this->fp_w = redirectOut? fopen(redirectOut, append_stdout ? "a" : "w") : stdout;
+	this->fp_err = redirectErr? fopen(redirectErr, appendErr? "a" : "w") : stderr;
 }
 
 int CallNode::evaluate(InterpreterState *state) {
 	// todo stringify whole command
 
-	bool dontEcho = this->silent || state->echo;
-	if(!dontEcho) {
+	if(!this->silent || state->echo) {
 	}
-
-	// todo redirection
-	FILE *fp_r, *fp_w;
-	//if(redirect) {
-	//	fp = fopen();
-	//} else {
-		fp_r = stdin;
-		fp_w = stdout;
-	//}
 
 	if(multicharMapping.count(this->hash) > 0) {
 		CallPtr funcPtr = multicharMapping.at(this->hash).second;
 		if(funcPtr != nullptr) {
-			return funcPtr((CallParams){this->children, state, fp_r, fp_w});
+			return funcPtr((CallParams){this->children, state, fp_r, fp_w, fp_err});
 		}
 	} else {
-		// todo find the executable
-		// and execute with stringified params
-
 		//printf("%s\n", strndup(state->buffer[this->args.front().txtStart], this->args.front().txtStart+this->args.back().txtStart+this->args.back().txtLength));
 
 #ifdef _WIN64
-		printf("here %s\n", this->funcName);
-		STARTUPINFO startup_info;
-		memset(&startup_info, 0, sizeof(STARTUPINFO));
+		// printf("here %s\n", this->funcName);
+		STARTUPINFO startup_info = {0};
+		PROCESS_INFORMATION process_info = {0};
+
 		startup_info.cb = sizeof(STARTUPINFO);
 
-		PROCESS_INFORMATION process_info;
-		memset(&process_info, 0, sizeof(PROCESS_INFORMATION));
-
 		// first createprocess, if fails try shellexecute
-		bool x = ::CreateProcessA(this->funcName, "", NULL, NULL, TRUE, CREATE_UNICODE_ENVIRONMENT | NORMAL_PRIORITY_CLASS, NULL, NULL, &startup_info, &process_info);
+		bool x = CreateProcessA(this->funcName, "" /* todo params */, NULL, NULL, TRUE, CREATE_UNICODE_ENVIRONMENT | NORMAL_PRIORITY_CLASS, NULL, NULL, &startup_info, &process_info);
 		if (!x) {
 			printf("CreateProcess failed, error: %d\n", GetLastError());
-			return 0;
+
+			SHELLEXECUTEINFOA shellExecuteInfo = {
+
+			};
+
+			bool shellExec = ShellExecuteEx(&shellExecuteInfo);
+			if(!shellExec) {
+				printf("ShellExecuteEx failed, error: %d\n", GetLastError());
+			}
+
+			return 1;
 		}
 #else
+		// todo unix start process
 #endif
 
 	}
 
 	return 0;
 }
+
+CallNode::~CallNode() {
+	if(this->fp_r != stdin) fclose(this->fp_r);
+	if(this->fp_w != stdin) fclose(this->fp_w);
+	if(this->fp_err != stderr) fclose(this->fp_err);
+}
+
 mkstringify(CallNode, this->funcName);
 
 
@@ -421,6 +440,7 @@ ForNode::ForNode(ForType type, char id, ParenthesesNode *cond, Node *body, Strin
 }
 
 uint64_t ForNode::evaluate(InterpreterState *state) {
+	// the fastest code is the one that never runs.
 	if((this->loopBody->type & BARETYPE) == Node::Type::Parentheses) {
 		if(this->loopBody->children->empty()) {
 			return 0;

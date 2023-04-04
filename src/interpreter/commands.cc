@@ -63,7 +63,7 @@ IFUN(doEcho) {
 
 IFUN(doGoto) {
 	//todo check param type
-	callParams.state->filepos = callParams.state->labels[_hashfunc_(TCAST(IdNode *, (*callParams.params)[0])->str)];
+	callParams.state->filepos = callParams.state->labels[TCAST(IdNode *, (*callParams.params)[0])->hash];
 	return 0;
 }
 
@@ -108,7 +108,7 @@ IFUN(doColor) {
 	return 1;
 #else
 	#warning "doColor needs testing"
-	const static short mapping[] = {
+	const static char mapping[] = {
 		0x30, 0x34, 0x32, 0x36, 0x31, 0x35, 0x33, 0x37,
 		0x90, 0x94, 0x92, 0x96, 0x91, 0x95, 0x93, 0x97
 	};

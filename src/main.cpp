@@ -17,6 +17,8 @@
 #include "standard.h"
 #include <magic_enum.hpp>
 
+#include "utilities/file_utils.h"
+
 #include "interpreter/interpreter.hh"
 
 template<typename T>
@@ -74,14 +76,15 @@ void prettyPrint(int level, Node *n) {
 int main(int argc, char *argv[], char *envp[]) {
 	setenv("mbat_version", "001al", true);
 	if(argc < 2) {
-		auto s = new InterpreterState {
+		char line[512], path[4096];
+		auto s = InterpreterState {
 			.echo = true,
 			.filepos = 0
 		};
-		char line[512], path[4096];
 		printf("%s> ", getcwd(path, 4096));
 		while(fgets(line, sizeof line, stdin) != NULL) {
-			Interpreter(line, strlen(line), s).interpret();
+			s.filepos = 0;
+			Interpreter(line, strlen(line), &s).interpret();
 			printf("%s> ", getcwd(path, sizeof path));
 		}
 
@@ -93,9 +96,7 @@ int main(int argc, char *argv[], char *envp[]) {
 	gettimeofday(&tval_before, NULL);
 	FILE *f = fopen(argv[1], "r");
 	if(f == nullptr) return -1;
-	fseek(f, 0, SEEK_END);
-	size_t size = ftell(f);
-	rewind(f);
+	size_t size = get_file_size(f);
 
 	char *buffer = calloc(size, sizeof(char));
 	fread(buffer, size, 1, f);

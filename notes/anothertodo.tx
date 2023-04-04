@@ -1,10 +1,7 @@
 Another todo:
-[ ] - labels
-[ ] - comments
 [ ] - string operations (%test:a=b%)
-[ ] - command terminators (|, &, >, <)
 [ ] - escape characters ( ^( )
-[ ] - loops (for)
-[ ] - conditionals (if, else)
-
-[ ] - test parentheses node
+[p] - comments                              \
+		- partially implemented (rem)       = partially done
+[w] - loops (for)                           =
+[w] - conditionals (if, else)               /

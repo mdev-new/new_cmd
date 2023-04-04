@@ -60,6 +60,7 @@ void stdcall print(int a) {
 	return;
 }
 
+// todo move this to standard.c
 static void stdcall sleep(int ms) {
 	Sleep(ms); // standard.h for linux has macro Sleep so we're clear here
 }
@@ -67,7 +68,7 @@ static void stdcall sleep(int ms) {
 void hookDll(DllEntry entry) {
 
   DllMainData d = {
-	.registerCommand = (decltype(DllMainData::registerCommand)) RegisterCommand,
+	  .registerCommand = RegisterCommand,
     .sleep = sleep,
     .setEnvVar = nullptr,
     .createThread = nullptr,
@@ -75,7 +76,7 @@ void hookDll(DllEntry entry) {
   };
 
   int x = entry(&d);
-  printf("Hooked native code returned: %d\n", x);
+  printf("Native code returned: %d\n", x);
 
 }
 

@@ -13,7 +13,12 @@ endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 	add_compile_options(-pipe)
+  add_link_options(-Wl,--allow-multiple-definition)
 endif()
+
+#if(WIN32)
+#    add_compile_definitions(_UNICODE UNICODE)
+#endif()
 
 add_subdirectory(extern/patterns)
 add_subdirectory(extern/magic_enum)
@@ -48,7 +53,8 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 	)
 endif()
 
-target_link_libraries(new_cmd mpark_patterns magic_enum)
+#todo add check for gnu
+target_link_libraries(new_cmd mpark_patterns magic_enum -static)
 
 # --- compressor
 add_executable(compressor

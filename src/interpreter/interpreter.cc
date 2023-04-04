@@ -30,9 +30,8 @@ Interpreter::Interpreter(char *buffer, size_t size, InterpreterState *s)
 }
 
 int Interpreter::interpret() {
-	int &i = this->state->filepos;
-	for(; i < this->nodes.size(); i++) {
-		nodes[i]->evaluate(this->state);
+	for(Node *n : this->nodes) {
+		n->evaluate(this->state);
 	}
 
 	return 0;

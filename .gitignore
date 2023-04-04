@@ -18,3 +18,4 @@ sdk/dlltool.exe
 cachegrind.*
 *.gch
 *.depends
+build/

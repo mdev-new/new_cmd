@@ -6,4 +6,3 @@ Env caching:
  -> this will even work with cmd rewrite, so if launching background job we'll still have the cache
 
 DLL Extensions will have to use custom function that they will get a pointer to
-lpReserved in dll's will probably point to a struct instead of a single function
