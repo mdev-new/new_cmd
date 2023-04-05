@@ -1,20 +1,35 @@
+%include "std.i"
+	section .text
+
 [bits 64]
 [org 0x00]
+	jmp start
 
-jmp start
+	section .data
 
-cmd: db "test", 0
-
+baseAddr dq 0
+cmd db "test", 0
 counter dw 0
+
+	section .text
+
 test_command:
-	add dword [counter], 1
-	mov eax, dword [counter]
+	xor rax, rax ; make sure upper half if empty
+	add dword [rel counter], 1
+	mov eax, dword [rel counter]
 	retn
 
 start:
-	mov rax, rcx
-	mov rax, test_command
-	mov rcx, cmd
-	call [rax]
-	mov rax, 10
+	push_regs
+	mov r15, rcx ; r15 = &DllMainData
+	mov r14, [r15+baseAddress] ; r14 = this module's base address
+	mov [r14+baseAddr], r14
+
+	lea rcx, [r14+cmd]
+	lea rdx, [r14+test_command]
+	call [r15+registerCmd]
+
+	pop_regs
+
+	mov rax, 0
 	retn

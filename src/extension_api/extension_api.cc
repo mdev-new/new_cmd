@@ -45,6 +45,7 @@ void *allocExecutable(size_t size) {
 
 void *freeExecutable(void *ptr, size_t size = 0) {
 #ifdef __linux__
+  //mprotect(ptr, size, PROT_READ | PROT_EXEC);
   free(ptr);
 #elif defined(_WIN32)
   ptr = VirtualFree(ptr, size, MEM_RELEASE);
@@ -52,7 +53,14 @@ void *freeExecutable(void *ptr, size_t size = 0) {
 }
 
 void stdcall RegisterCommand(char *cmd, CallPtr func) {
+	printf("Got cmd:%s @ %llx\n", cmd, func);
 	multicharMapping[_hashfunc_(cmd)] = std::make_pair(Token::Type::BuiltIn, func);
+	return;
+}
+
+void stdcall testFunc(void *a, void *b) {
+	printf("Hello %llx\n", a);
+	return;
 }
 
 void stdcall print(int a) {
@@ -60,19 +68,15 @@ void stdcall print(int a) {
 	return;
 }
 
-// todo move this to standard.c
-static void stdcall sleep(int ms) {
-	Sleep(ms); // standard.h for linux has macro Sleep so we're clear here
-}
-
 void hookDll(DllEntry entry) {
 
   DllMainData d = {
-	  .registerCommand = RegisterCommand,
-    .sleep = sleep,
-    .setEnvVar = nullptr,
+	.registerCommand = RegisterCommand,
+    .sleep = std_Sleep,
+    .setEnvVar = std_setenv,
     .createThread = nullptr,
-    .getProcAddr = getProcAddress
+    .getProcAddr = getProcAddress,
+	.baseAddress = entry
   };
 
   int x = entry(&d);
@@ -82,7 +86,7 @@ void hookDll(DllEntry entry) {
 
 IFUN(doInject) {
 	StringNode *param0 = (*callParams.params)[0];
-	if(param0->type != Node::Type::String) return -1;
+	if(param0->type != Node::Type::String && param0->type != Node::Type::Id) return -1; //todo make smth like isTextNode func
 
 	char *dllname = param0->stringify().second;
     char *buffer = nullptr;

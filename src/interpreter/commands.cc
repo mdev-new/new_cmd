@@ -49,7 +49,7 @@ IFUN(doCls) {
 	chinfo.Attributes = ConsoleScreenInfo.wAttributes;
 
 	ScrollConsoleScreenBuffer(handle, &ScrollRect, NULL, { 0, (SHORT)(0 - ConsoleScreenInfo.dwSize.Y) }, &chinfo);
-	SetConsoleCursorPosition(/*GetStdHandle(STD_OUTPUT_HANDLE)*/handle, {0, 0});
+	SetConsoleCursorPosition(handle, {0, 0});
 #else
 	printf("\e[1;1H\e[2J");
 #endif

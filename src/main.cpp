@@ -1,6 +1,5 @@
 // TODO:
-// basic interpreter for files
-// repl support
+// interpreter for files (WIP, obviously)
 // fix memory leaks (free tokens, nodes, etc)
 
 // far targets:
@@ -81,11 +80,11 @@ int main(int argc, char *argv[], char *envp[]) {
 			.echo = true,
 			.filepos = 0
 		};
-		printf("%s> ", getcwd(path, 4096));
+		printf("(new_cmd) %s> ", getcwd(path, 4096));
 		while(fgets(line, sizeof line, stdin) != NULL) {
 			s.filepos = 0;
 			Interpreter(line, strlen(line), &s).interpret();
-			printf("%s> ", getcwd(path, sizeof path));
+			printf("(new_cmd) %s> ", getcwd(path, sizeof path));
 		}
 
 		return 0;

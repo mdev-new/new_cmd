@@ -1,20 +1,14 @@
 #pragma once
 #include <unordered_map>
-#include <cstdint>
-#include <cstdio>
-#include <cstddef>
 #include <vector>
 #include <stack>
 #include <functional>
 #include <variant>
 
-// NOTE TO SELF: This doubles down as public API
-// so even tho i don't like the placement of things here they have to stay \_(ツ)_/
-
-// todo throw all this into an namespace
+#include "standard.h"
 
 #define stringifyfun std::pair<const char *, char *> stringify() override
-#define IFUN(name) int name(CallParams callParams)
+#define IFUN(name) int stdcall name(CallParams callParams)
 
 #define TCAST(type, val) ((type)val)
 #define WITHCHILDREN (1 << 15)
@@ -42,7 +36,7 @@ struct CallParams {
 	FILE *fpRead, *fpWrite, *fpErr;
 };
 
-using CallPtr = int(*)(CallParams callParams);
+using CallPtr = int(stdcall *)(CallParams callParams);
 
 struct Node {
 	enum Type {

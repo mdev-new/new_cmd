@@ -19,3 +19,4 @@ cachegrind.*
 *.gch
 *.depends
 build/
+*.s
