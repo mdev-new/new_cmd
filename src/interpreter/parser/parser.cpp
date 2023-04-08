@@ -1,6 +1,5 @@
 // todo
 /// parse &, &&, |
-/// parse ()
 /// parse commands & their params
 
 #include "parser.hpp"
@@ -403,7 +402,7 @@ void Parser::parse() {
 	//	fprintf(stderr, "[%s] %d\t%s\n", __FILE__, tokens[x].type, magic_enum::enum_name((Token::Type)(tokens[x].type)).data());
 	//}
 
-	Node *current;
+	Node *current = nullptr;
 	for(i = 0, skip = 1; i < tokens.size()-1; i+=skip, skip = 1) {
 		std::tie(skip, current) = makeNode(tokens, i, 0);
 		if(current != nullptr) this->nodes.push_back(current);

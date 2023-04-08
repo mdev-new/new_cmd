@@ -72,12 +72,50 @@ NumberNode::NumberNode(int n)
 	this->num = n;
 }
 
-mkstringify(NumberNode, itoa_(this->num));
-
 NumberNode::operator int() const {
 	return this->num;
 }
 
+int NumberNode::evaluate() const {
+        return this->num;
+}
+
+mkstringify(NumberNode, itoa_(this->num));
+
+/* == BinNotNode == */
+BinNotNode::BinNotNode(Node *n)
+  :super(Node::Type::BinNot)
+{
+        this->child = n;
+}
+
+int BinNotNode::evaluate() const {
+        return (~int(this->child));
+}
+
+BinNotNode::operator int() const {
+        return evaluate();
+}
+
+mkstringify(BinNotNode, itoa_(evaluate()));
+
+/* LogicalNotNode */
+
+LogicalNotNode::LogicalNotNode(Node *n)
+  :super(Node::Type::LogNot)
+{
+        this->child = n;
+}
+
+int LogicalNotNode::evaluate() const {
+        return (~int(this->child));
+}
+
+LogicalNotNode::operator int() const {
+        return evaluate();
+}
+
+mkstringify(LogicalNotNode, itoa_(evaluate()));
 
 /* === StringNode === */
 
@@ -177,12 +215,10 @@ BinOpNodeImpl(MultiplicationNode, *);
 BinOpNodeImpl(DivisionNode, /);
 BinOpNodeImpl(BinaryOrNode, |);
 BinOpNodeImpl(BinaryAndNode, &);
-//BinOpNodeImpl(BinaryNot, ~);
 BinOpNodeImpl(BinaryModulo, %);
 BinOpNodeImpl(BinaryXor, ^);
 BinOpNodeImpl(LogicalOrNode, ||);
 BinOpNodeImpl(LogicalAndNode, &&);
-//BinOpNodeImpl(LogicalNot, !);
 
 /* === EnvVarNode === */
 

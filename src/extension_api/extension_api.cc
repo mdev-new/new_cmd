@@ -20,8 +20,28 @@
 #define SINFL_IMPLEMENTATION
 #include "extern/sinfl.hh"
 
+enum {
+  ERROR_NOT_CMDEXE = -2,
+  ERROR_CANNOT_GET_PARENT_PROC = -3,
+  ERROR_FILE_DOESNT_EXIST_OR_INVALID_ARGS = -4,
+  ERROR_CANNOT_OPEN_FILE = -5,
+  ERROR_EMPTY_FILE = -6,
+  ERROR_CANNOT_READ_FILE = -7,
+  ERROR_CANNOT_ALLOCATE = -8,
+  ERROR_CANNOT_FREE = -9,
+  ERROR_CANNOT_DECOMPRESS = -10,
+  ERROR_CANNOT_HOOK = -11,
+  ERROR_CANNOT_WRITE_PROCESS_MEM = -12,
+  ERROR_CANNOT_VIRTUAL_ALLOC = -13,
+  ERROR_CANNOT_VIRTUAL_FREE = -14,
+  ERROR_CANNOT_OPEN_PROCESS = -15,
+  ERROR_CANNOT_OPEN_HEAP = -15,
+  ERROR_CANNOT_GET_PARENT_PROC_PATH = -16,
+  ERROR_INVALID_FILE = -17
+};
+
 void *getProcAddress(char *mod, char *fn) {
-  // todo cache results
+  // todo cache modules?
 #if defined(_WIN32)
   return GetProcAddress(GetModuleHandleA(mod), fn);
 #elif defined(__APPLE__)
@@ -35,11 +55,11 @@ void *allocExecutable(size_t size) {
 	void *ptr = nullptr;
 #ifdef __linux__
   ptr = malloc(size);
-  mprotect(ptr, size, PROT_READ | PROT_WRITE | PROT_EXEC);
+  mprotect(ptr, size, PROT_READ | PROT_WRITE | PROT_EXEC); // todo: is this really needed?
 #elif defined(_WIN32)
   ptr = VirtualAlloc(nullptr, size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 #endif
-	if (ptr == nullptr) printf("alloc failed!\n");
+	//if (ptr == nullptr) printf("alloc failed!\n");
 	return ptr;
 }
 
@@ -53,35 +73,21 @@ void *freeExecutable(void *ptr, size_t size = 0) {
 }
 
 void stdcall RegisterCommand(char *cmd, CallPtr func) {
-	printf("Got cmd:%s @ %llx\n", cmd, func);
 	multicharMapping[_hashfunc_(cmd)] = std::make_pair(Token::Type::BuiltIn, func);
 	return;
 }
 
-void stdcall testFunc(void *a, void *b) {
-	printf("Hello %llx\n", a);
-	return;
-}
-
-void stdcall print(int a) {
-	printf("Hooked native code prints: %d\n", a);
-	return;
-}
-
-void hookDll(DllEntry entry) {
-
+int hookDll(DllEntry entry) {
   DllMainData d = {
-	.registerCommand = RegisterCommand,
+    .registerCommand = RegisterCommand,
     .sleep = std_Sleep,
     .setEnvVar = std_setenv,
     .createThread = nullptr,
     .getProcAddr = getProcAddress,
-	.baseAddress = entry
+	  .baseAddress = entry
   };
 
-  int x = entry(&d);
-  printf("Native code returned: %d\n", x);
-
+  return entry(&d);
 }
 
 IFUN(doInject) {
@@ -89,7 +95,7 @@ IFUN(doInject) {
 	if(param0->type != Node::Type::String && param0->type != Node::Type::Id) return -1; //todo make smth like isTextNode func
 
 	char *dllname = param0->stringify().second;
-    char *buffer = nullptr;
+  char *buffer = nullptr;
 
 	FILE *fp = fopen(dllname, "rb");
 	fseek(fp, 0, SEEK_END);
@@ -105,27 +111,27 @@ IFUN(doInject) {
 	//printf("%llx\n", header->entryOffset);
 	//exit(-1);
 
+  int retcode = 0;
+
 	switch(header->compressionFlags & 0b1111) {
-	case UNCOMPRESSED: hookDll((DllEntry)(buffer+header->sizeOfSelf)); break;
+	case UNCOMPRESSED: retcode = hookDll((DllEntry)(buffer+header->sizeOfSelf)); break;
 	case ALGO_LZ77: {
 		char *decompBuffer = (decltype(decompBuffer)) allocExecutable(header->uncompressed_size);
-		// todo error check
+		if (decompBuffer == NULL) return ERROR_CANNOT_ALLOCATE;
 
 		int decomp = lz77_decompress(buffer+header->sizeOfSelf, size-header->sizeOfSelf, decompBuffer, header->uncompressed_size+1, header->compressionFlags >> 27);
-		// todo error check
-		hookDll((DllEntry)(decompBuffer));
+    if (decomp != header->uncompressed_size) return ERROR_CANNOT_DECOMPRESS;
+		retcode = hookDll((DllEntry)(decompBuffer));
 		//free(decompBuffer);
 		break;
 	} break;
 	case ALGO_DEFLATE: {
 		char *decompBuffer = (decltype(decompBuffer)) allocExecutable(header->uncompressed_size);
-		// todo error check
+		if (decompBuffer == NULL) return ERROR_CANNOT_ALLOCATE;
 
 		int decomp = sinfl_decompress(decompBuffer, header->uncompressed_size+1, buffer+header->sizeOfSelf, size-header->sizeOfSelf);
-		// todo error check
-
-		// todo error check
-		hookDll((DllEntry)(decompBuffer));
+    if (decomp != header->uncompressed_size) return ERROR_CANNOT_DECOMPRESS;
+		retcode = hookDll((DllEntry)(decompBuffer));
 		//free(decompBuffer);
 		break;
 	} break;
@@ -133,6 +139,5 @@ IFUN(doInject) {
 	}
 
 	//free(buffer);
-	return 0;
-
+	return retcode;
 }

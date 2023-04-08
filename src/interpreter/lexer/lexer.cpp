@@ -45,33 +45,41 @@ Lexer::Lexer(uint8_t *buffer, size_t size)
 	}
 }
 
-// LIMITATION: env vars cannot start with numbers and spaces
-static std::regex normalExpansion("%[a-zA-Z](.*)%");
-static std::regex delayedExpansion("![a-zA-Z%](.*)!");
-
+// LIMITATION: env vars cannot start with numbers
 //todo nested env vars
 
+// this is fucking ugly but who cares
 Token Lexer::processPossibleEnvVar(size_t idx, int fallbackToken) {
-	std::string s((const char*) &buffer[idx]);
-	std::smatch m;
-	if (std::regex_match (s, m, normalExpansion)) {
-		std::regex_replace(s, normalExpansion, "%%s%", std::regex_constants::format_first_only);
-		return (Token){Token::Type::EnvVar, false, 0, idx, idx+4};
-	} else if(std::regex_match (s, m, delayedExpansion)) {
-		if (std::regex_match (s, m, normalExpansion)) {
-			std::regex_replace(s, normalExpansion, "%%s%", std::regex_constants::format_first_only);
-		}
-		std::regex_replace(s, delayedExpansion, "!%s!", std::regex_constants::format_first_only);
-		return (Token){Token::Type::EnvVar, true, 0, idx, idx+4};
-	} else {
-		this->idx++;
-		return (Token){fallbackToken, 0, 0, idx-1, 1};
-	}
+  char *m1, *m2 = nullptr;
+  char *newlPtr = nullptr;
+  char *line = strndup(this->buffer, (newlPtr = strchr(this->buffer, '\n')-(char*)(this->buffer)));
+  char *envVarName = nullptr;
+
+  // todo check for commas (set /a x=1%2,y=4%2)
+
+  if(m1 = strchr(newlPtr, '%')+1) {
+    if(m2 = strchr(newlPtr, '%')-1) {
+      envVarName = strndup(m1, m2-m1);
+    }
+  }
+  else if(m1 = strchr(newlPtr, '!')+1) {
+    if(m2 = strchr(newlPtr, '!')-1) {
+      envVarName = strndup(m1, m2-m1);
+    }
+  }
+  else return (Token){fallbackToken, 0, 0, this->idx++, 1};
+
+//  if(matching_percents_found | matching_exclamations_found) {
+//    while(next_percent != nullptr || next_exclamation != nullptr) {
+//        find_second_percent | find_second_exclamation;
+//        replace content between them with %s and store original content in strduped var
+//    }
+//  }
 }
 
 Token Lexer::get() {
 	// i guess table could also work for simple tokens
-#define ReturnToken(x) idx++; return (Token){x, 0, 0, idx-1, 1}
+#define ReturnToken(x) return (Token){x, 0, 0, idx++, 1}
 #define ReturnToken1(x, y) idx+=y; return (Token){x, 0, 0, idx-y, 1}
 
 	static auto processQuotes = [&] {
@@ -148,10 +156,8 @@ Token Lexer::get() {
 		pattern('-', _, _, _) = [&] { ReturnToken(Token::Type::Minus); },
 		pattern('*', _, _, _) = [&] { ReturnToken(Token::Type::Asterisk); },
 		pattern('/', _, _, _) = [&] { ReturnToken(Token::Type::Slash); },
-		//pattern('.', _, _, _) = [&] { ReturnToken(Token::Type::Dot); },
 		pattern(',', _, _, _) = [&] { ReturnToken(Token::Type::Comma); },
 		//pattern(':', _, _, _) = [&] { ReturnToken(Token::Type::Colon); },
-		//pattern(';', _, _, _) = [&] { ReturnToken(Token::Type::Semicolon); },
 		pattern('|', _, _, _) = [&] { ReturnToken(Token::Type::Pipe); },
 		pattern('~', _, _, _) = [&] { ReturnToken(Token::Type::Tilde); },
 		pattern('&', _, _, _) = [&] { ReturnToken(Token::Type::And); },

@@ -42,17 +42,19 @@ struct Node {
 	enum Type {
 		Parentheses		= NTP(1, 0),
 		BinOp			= NTP(1, 1),
-		Assign			= NTP(1, 2),
-		Compare			= NTP(1, 3),
+		Assign		= NTP(1, 2),
+		Compare		= NTP(1, 3),
 		If				= NTP(1, 4),
 		For				= NTP(1, 5),
 		Call			= NTP(1, 6),
+    BinNot    = NTP(1, 7),
+    LogNot    = NTP(1, 8),
 
 		Number			= NTP(0, 0),
 		String			= NTP(0, 1),
 		EnvVar			= NTP(0, 2),
-		Label			= NTP(0, 3),
-		Id				= NTP(0, 4),
+		Label			  = NTP(0, 3),
+		Id			  	= NTP(0, 4),
 		Switch			= NTP(0, 5),
 	};
 
@@ -66,6 +68,7 @@ struct Node {
 		union {
 			struct { std::vector<Node*>* children; };
 			struct { Node *lhs, *rhs; };
+      struct { Node *child; };
 		};
 
 		union {
@@ -86,6 +89,21 @@ struct NumberNode final : public Node {
 	NumberNode(int n);
 	stringifyfun;
 	operator int() const override;
+  virtual int evaluate() const;
+};
+
+struct BinNotNode : public Node {
+	BinNotNode(Node *n);
+	stringifyfun;
+	operator int() const override;
+  int evaluate() const;
+};
+
+struct LogicalNotNode : public Node {
+	LogicalNotNode(Node* n);
+	stringifyfun;
+	operator int() const override;
+  int evaluate() const;
 };
 
 struct EnvVarNode;

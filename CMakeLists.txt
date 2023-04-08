@@ -47,11 +47,9 @@ add_executable(new_cmd
     ${cmd_src} ${cmd_hdr}
 )
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-	target_compile_options(new_cmd PRIVATE
-		$<$<COMPILE_LANGUAGE:CXX>:-fpermissive -w>
-	)
-endif()
+target_compile_options(new_cmd PRIVATE
+  $<$<COMPILE_LANGUAGE:CXX>:$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-w -fpermissive>>
+)
 
 #todo add check for gnu
 target_link_libraries(new_cmd mpark_patterns magic_enum -static)
