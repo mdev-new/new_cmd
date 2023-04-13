@@ -19,14 +19,15 @@
 // like interpreter, this file HAS to be optimized aswell
 // atleast the things on hot path
 
-char *itoa_(int i) {
+char * stdcall itoa_(int i) {
 	static char b[21] = {0};
-	char *c = b + 20;
+	char *c = b + 19;
 	int x = abs(i);
 	do
 		*--c = '0' + (x % 10);
 	while(x && (x /= 10));
 	if(i < 0) *--c = '-';
+	//printf("converted: %d as %s\n", i, c);
 	return c;
 }
 

@@ -40,15 +40,43 @@ enum {
   ERROR_INVALID_FILE = -17
 };
 
-void *getProcAddress(char *mod, char *fn) {
-  // todo cache modules?
+void* stdcall getProcAddress(char *mod, char *fn) {
+	// todo cache modules?
 #if defined(_WIN32)
   return GetProcAddress(GetModuleHandleA(mod), fn);
 #elif defined(__APPLE__)
-# error __PRETTY_FUNCTION__ NOT IMPLEMENTED
+# error getProcAddress on Apple NOT IMPLEMENTED
 #elif defined(__linux__)
-  return dlsym(dlopen(mod, RTLD_NOW | RTLD_GLOBAL), fn);
+  return dlsym(NULL, fn);
 #endif
+}
+
+
+void stdcall getProcAddresses(size_t *funcsBase, char *funcStrBase, char *modules, unsigned noOfFuncsAndModules) {
+	// noOfFuncsAndModules is an ugly hack because i havent figured out how to handle 5+ args
+	//printf("funcsBase:%llx funcStrBase:%llx modules:%llx noOfFuncs:%d noOfModules:%d\n", funcsBase, funcStrBase, modules, noOfFuncsAndModules & 0xFFFF, (noOfFuncsAndModules & 0xFFFF0000) >> 15);
+	char *modules2 = nullptr;
+	unsigned noMods = ((noOfFuncsAndModules & 0xFFFF0000) >> 15);
+	unsigned noFuncs = (noOfFuncsAndModules & 0x0000FFFF);
+	for (unsigned i = 0; i < noFuncs; i++) {
+		//printf("Getting address of: %s (funcStrBase = %llx) ", funcStrBase, funcStrBase);
+
+		modules2 = modules;
+		for (unsigned j = 0; j < noMods; j++) {
+			void *func = getProcAddress(modules2, funcStrBase);
+			if(func != NULL) {
+				funcsBase[i] = func;
+				break;
+			} else {
+				modules2 += strlen(modules2)+1;
+				continue;
+			}
+		}
+
+		int x = strlen(funcStrBase)+1;
+		funcStrBase += x;
+		//printf("(result = %llx); adding %d to funcStrBase\n", funcsBase[i], x);
+	}
 }
 
 void *allocExecutable(size_t size) {
@@ -63,12 +91,12 @@ void *allocExecutable(size_t size) {
 	return ptr;
 }
 
-void *freeExecutable(void *ptr, size_t size = 0) {
+void *freeExecutable(void *ptr) {
 #ifdef __linux__
   //mprotect(ptr, size, PROT_READ | PROT_EXEC);
   free(ptr);
 #elif defined(_WIN32)
-  ptr = VirtualFree(ptr, size, MEM_RELEASE);
+  ptr = VirtualFree(ptr, 0, MEM_RELEASE);
 #endif
 }
 
@@ -77,25 +105,51 @@ void stdcall RegisterCommand(char *cmd, CallPtr func) {
 	return;
 }
 
-int hookDll(DllEntry entry) {
-  DllMainData d = {
-    .registerCommand = RegisterCommand,
-    .sleep = std_Sleep,
-    .setEnvVar = std_setenv,
-    .createThread = nullptr,
-    .getProcAddr = getProcAddress,
-	  .baseAddress = entry
-  };
-
-  return entry(&d);
+void stdcall createThread(void *func) {
+#ifdef __linux__
+	#error extension_api.cc:createThread not implemented
+#elif defined(_WIN32)
+	CreateThread(0,0,func,0,0,0);
+#endif
 }
+
+extern char *stdcall itoa_(int n);
+
+#define isdigit(x) (x >= '0' && x <= '9' ? 1 : 0)
+long GETINPUT_SUB atol(const char *num) {
+	long value = 0, neg = 0;
+	if (num[0] == '-') { neg = 1; ++num; }
+	while (*num && isdigit(*num)) value = value * 10 + *num++  - '0';
+	return neg? -value : value;
+}
+
+long getenvnum(char *name) {
+	static char buffer[32] = {0};
+	return GetEnvironmentVariable(name, buffer, sizeof(buffer))? atol(buffer) : 0;
+}
+
+int ceil_(double num) {
+	int a = num;
+	return ((double)a != num) ? a+1 : a;
+}
+
+static FuncPtrs funcPtrs = {
+	.registerCommand = RegisterCommand,
+	.sleep = std_Sleep,
+	.setEnvVar = std_setenv,
+	.createThread = createThread,
+	.getProcAddr = getProcAddress,
+	.getProcAddrs = getProcAddresses,
+	.itoa = itoa_
+	.atoi = atoi
+};
 
 IFUN(doInject) {
 	StringNode *param0 = (*callParams.params)[0];
 	if(param0->type != Node::Type::String && param0->type != Node::Type::Id) return -1; //todo make smth like isTextNode func
 
 	char *dllname = param0->stringify().second;
-  char *buffer = nullptr;
+	char *buffer = nullptr;
 
 	FILE *fp = fopen(dllname, "rb");
 	fseek(fp, 0, SEEK_END);
@@ -108,36 +162,37 @@ IFUN(doInject) {
 	Header *header = (Header *)buffer;
 	if(header->magic != MAGIC) return -1;
 
-	//printf("%llx\n", header->entryOffset);
-	//exit(-1);
+	int retcode = 0;
 
-  int retcode = 0;
-
-	switch(header->compressionFlags & 0b1111) {
-	case UNCOMPRESSED: retcode = hookDll((DllEntry)(buffer+header->sizeOfSelf)); break;
+	DllEntry e = nullptr;
+	switch(header->compressionFlags & 0xF) {
+	case UNCOMPRESSED: {
+		retcode = (e = (DllEntry)(buffer+header->sizeOfSelf))(&funcPtrs, e);
+		break;
+	}
 	case ALGO_LZ77: {
 		char *decompBuffer = (decltype(decompBuffer)) allocExecutable(header->uncompressed_size);
 		if (decompBuffer == NULL) return ERROR_CANNOT_ALLOCATE;
 
 		int decomp = lz77_decompress(buffer+header->sizeOfSelf, size-header->sizeOfSelf, decompBuffer, header->uncompressed_size+1, header->compressionFlags >> 27);
-    if (decomp != header->uncompressed_size) return ERROR_CANNOT_DECOMPRESS;
-		retcode = hookDll((DllEntry)(decompBuffer));
+		if (decomp != header->uncompressed_size) return ERROR_CANNOT_DECOMPRESS;
+		retcode = (e = (DllEntry)(decompBuffer))(&funcPtrs, e);
 		//free(decompBuffer);
 		break;
-	} break;
+	}
 	case ALGO_DEFLATE: {
 		char *decompBuffer = (decltype(decompBuffer)) allocExecutable(header->uncompressed_size);
 		if (decompBuffer == NULL) return ERROR_CANNOT_ALLOCATE;
 
 		int decomp = sinfl_decompress(decompBuffer, header->uncompressed_size+1, buffer+header->sizeOfSelf, size-header->sizeOfSelf);
-    if (decomp != header->uncompressed_size) return ERROR_CANNOT_DECOMPRESS;
-		retcode = hookDll((DllEntry)(decompBuffer));
+		if (decomp != header->uncompressed_size) return ERROR_CANNOT_DECOMPRESS;
+		retcode = (e = (DllEntry)(decompBuffer))(&funcPtrs, e);
 		//free(decompBuffer);
 		break;
-	} break;
+	}
 	default: break;
 	}
 
-	//free(buffer);
+	if((header->compressionFlags & 0b1111) != UNCOMPRESSED) freeExecutable(buffer);
 	return retcode;
 }

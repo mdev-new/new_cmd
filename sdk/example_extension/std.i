@@ -34,4 +34,6 @@ sleep        equ (1*8)
 setEnvVar    equ (2*8)
 createThread equ (3*8)
 getProcAddr  equ (4*8)
-baseAddress  equ (5*8)
+getProcAddrs equ (5*8)
+itoa				 equ (6*8)
+
